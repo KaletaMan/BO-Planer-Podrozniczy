@@ -169,8 +169,8 @@ if __name__ == "__main__":
     rows = 30
     cols = 30
 
-    time_limit = 10_000
-    budget = 10_000
+    time_limit = 800
+    budget = 300
 
     weight = generate_weight(rows, cols, min_val=7, max_val=12)
 
@@ -184,9 +184,9 @@ if __name__ == "__main__":
         rows=rows,
         cols=cols,
         time_needed=20,
-        min_count=4,
+        min_count=0,
         max_count=10,
-        number_on_map=100,
+        number_on_map=15,
         value_range=(20, 70),
         cost_range=(10, 50),
     )
@@ -198,9 +198,9 @@ if __name__ == "__main__":
         rows=rows,
         cols=cols,
         time_needed=35,
-        min_count=2,
+        min_count=0,
         max_count=7,
-        number_on_map=80,
+        number_on_map=20,
         value_range=(10, 120),
         cost_range=(25, 120),
     )
@@ -214,7 +214,7 @@ if __name__ == "__main__":
         time_needed=8,
         min_count=0,
         max_count=20,
-        number_on_map=200,
+        number_on_map=30,
         value_range=(2, 25),
         cost_range=(2, 25),
     )
