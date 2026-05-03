@@ -10,6 +10,7 @@ from src.map_generator import DEFAULT_TYPES, generate_map
 from src.path_solver import evaluate_path, solve_greedy_attractions, solve_random_walk
 from src.ui_io import ValidationIssue, list_maps, load_map, save_map, validate_map
 from src.ui_viz import plot_convergence, plot_map, plot_path_on_map, plot_paths_comparison
+from src.abc_ui_adapter import solve_abc_ui
 
 st.set_page_config(page_title="Trasy turystyczne — BO", layout="wide")
 
@@ -235,7 +236,7 @@ if mode == "Edytor / Generator":
             "Interfejs `solve(map, params) → path` + `evaluate_path(map, path)` jest stabilny."
         )
 
-        algo = st.radio("Algorytm", ["Greedy (zachłanny)", "Random walk"], horizontal=True)
+        algo = st.radio("Algorytm", ["Greedy (zachłanny)", "Random walk", "ABC"], horizontal=True)
         run_btn = st.button("Uruchom ▶", type="primary")
 
         if run_btn:
@@ -245,12 +246,26 @@ if mode == "Edytor / Generator":
             else:
                 if algo.startswith("Greedy"):
                     path = solve_greedy_attractions(st.session_state.map_data)
-                else:
+                    ev = evaluate_path(st.session_state.map_data, path)
+                elif algo.startswith("Random"):
                     path = solve_random_walk(
                         st.session_state.map_data,
                         seed=int(st.session_state.map_data.get("seed", 0)),
                     )
-                ev = evaluate_path(st.session_state.map_data, path)
+                    ev = evaluate_path(st.session_state.map_data, path)
+                else:
+                    abc_result = solve_abc_ui(
+                        st.session_state.map_data,
+                        population_size=30,
+                        iterations=100,
+                        limit=30,
+                        seed=int(st.session_state.map_data.get("seed", 0)),
+                    )
+
+                    path = abc_result["path"]
+                    ev = evaluate_path(st.session_state.map_data, path)
+                    st.session_state.last_history = abc_result["history"]
+
                 st.session_state.last_path = path
                 st.session_state.last_eval = ev
                 st.rerun()
@@ -262,6 +277,18 @@ if mode == "Edytor / Generator":
             c2.metric("Budżet", st.session_state.map_data.get("budget"))
             c3.metric("Wartość", ev["value_collected"])
             c4.metric("Atrakcje", len(ev["attractions_visited"]))
+            if "last_history" in st.session_state and st.session_state.last_history:
+                st.subheader("Konwergencja ABC")
+
+                import pandas as pd
+
+                df = pd.DataFrame(st.session_state.last_history)
+
+                st.line_chart(
+                    df,
+                    x="iteration",
+                    y="best_value"
+                )
             if ev["feasible"]:
                 st.success("Ścieżka mieści się w budżecie.")
             else:
@@ -270,6 +297,7 @@ if mode == "Edytor / Generator":
             if st.button("Wyczyść ścieżkę"):
                 st.session_state.last_path = None
                 st.session_state.last_eval = None
+                st.session_state.last_history = None
                 st.rerun()
 
 

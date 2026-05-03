@@ -421,6 +421,7 @@ def generate_abc_population(
         onlookers = population_size
 
     population = []
+    history = []
     seen = set()
     attempts = 0
     max_attempts = max(10_000, population_size * 800)
@@ -476,6 +477,40 @@ def generate_abc_population(
             repl["id"] = population[i]["id"]
             population[i] = repl
 
+        best = max(
+            population,
+            key=lambda s: (
+                s["total_value"],
+                -s["total_time"],
+                -s["movement_cost"],
+                -s["attraction_cost"]
+            )
+        )
+
+        history.append({
+            "iteration": _it + 1,
+            "best_value": best["total_value"],
+            "best_time": best["total_time"],
+            "movement_cost": best["movement_cost"],
+            "attraction_cost": best["attraction_cost"],
+            "visited_count": len(best["visited_attractions"]),
+        })
+
     for i, sol in enumerate(population):
         sol["id"] = sol.get("id", i)
-    return population
+
+    best = max(
+        population,
+        key=lambda s: (
+            s["total_value"],
+            -s["total_time"],
+            -s["movement_cost"],
+            -s["attraction_cost"]
+        )
+    )
+
+    return {
+        "population": population,
+        "best": best,
+        "history": history,
+    }
