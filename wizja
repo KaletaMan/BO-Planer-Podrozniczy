@@ -1,0 +1,200 @@
+\documentclass[11pt]{article}
+
+\usepackage[a4paper, margin=2.5cm]{geometry}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{enumitem}
+
+\title{Wizja projektu: planer podróżniczy}
+\author{Bartosz Tokarz, Adrian Michalski, Mikołaj Kaleta}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Cel projektu}
+
+Celem projektu jest opracowanie i analiza algorytmów wyznaczających optymalną trasę podróży pomiędzy punktem początkowym a końcowym z uwzględnieniem:
+\begin{itemize}
+    \item ograniczenia czasowego,
+    \item ograniczenia budżetowego,
+    \item maksymalizacji wartości odwiedzonych atrakcji turystycznych.
+\end{itemize}
+
+Problem stanowi rozszerzenie klasycznego zagadnienia znajdowania ścieżki o elementy decyzyjne związane z wyborem punktów pośrednich.
+
+\section{Opis problemu}
+
+Środowisko modelowane jest jako siatka, gdzie każde pole reprezentuje fragment terenu o określonym koszcie przejścia.
+
+\begin{itemize}
+    \item Każde pole posiada wagę określającą trudność terenu.
+    \item Koszt przejścia zależy od kierunku ruchu:
+    \begin{itemize}
+        \item ruch prosty: mnożnik $1$,
+        \item ruch po skosie: mnożnik $1.4$.
+    \end{itemize}
+\end{itemize}
+
+Na planszy rozmieszczone są atrakcje turystyczne:
+\begin{itemize}
+    \item każda atrakcja ma wartość turystyczną,
+    \item każda atrakcja ma koszt odwiedzenia (np. bilet).
+\end{itemize}
+
+Podróżnik:
+\begin{itemize}
+    \item startuje w punkcie $s$,
+    \item kończy w punkcie $t$,
+    \item posiada ograniczony czas oraz budżet.
+\end{itemize}
+
+Dodatkowo:
+\begin{itemize}
+    \item każdego przejścia można użyć tylko raz,
+    \item atrakcje mogą być odwiedzone maksymalnie raz.
+\end{itemize}
+
+\section{Model matematyczny}
+
+\subsection{Definicja grafu}
+
+Problem reprezentowany jest jako graf:
+\[
+G = (V, E)
+\]
+
+gdzie:
+\begin{itemize}
+    \item $V$ – zbiór pól siatki,
+    \item $E$ – możliwe przejścia między polami.
+\end{itemize}
+
+\subsection{Koszt przejścia}
+
+Koszt przejścia pomiędzy polami:
+\[
+c_{ij} = w_i \cdot d_{ij}
+\]
+
+gdzie:
+\begin{itemize}
+    \item $w_i$ – waga pola,
+    \item $d_{ij} \in \{1, 1.4\}$ – koszt zależny od kierunku ruchu.
+\end{itemize}
+
+\subsection{Atrakcje}
+
+Niech:
+\begin{itemize}
+    \item $A \subseteq V$ – zbiór atrakcji,
+    \item $v_i$ – wartość atrakcji,
+    \item $p_i$ – koszt (cena) atrakcji.
+    \item $\tau_i \in \mathcal{T}$ – typ atrakcji $i$.
+\end{itemize}
+
+\subsection{Typy atrakcji}
+
+Niech $\mathcal{T}$ oznacza zbiór wszystkich typów atrakcji.
+
+Każdemu typowi $\tau \in \mathcal{T}$ przypisane są następujące parametry:
+\begin{itemize}
+    \item $t_{\tau}$ – czas potrzebny na zwiedzenie atrakcji typu $\tau$,
+    \item $l_{\tau}$ – minimalna liczba atrakcji typu $\tau$, które należy odwiedzić,
+    \item $u_{\tau}$ – maksymalna liczba atrakcji typu $\tau$, które można odwiedzić.
+\end{itemize}
+
+\subsection{Zmienne decyzyjne}
+
+\[
+x_{ij} =
+\begin{cases}
+1 & \text{jeśli przechodzimy z } i \text{ do } j \\
+0 & \text{w przeciwnym razie}
+\end{cases}
+\]
+
+\[
+y_i =
+\begin{cases}
+1 & \text{jeśli odwiedzamy atrakcję } i \\
+0 & \text{w przeciwnym razie}
+\end{cases}
+\]
+
+\subsection{Funkcja celu}
+
+Celem jest maksymalizacja wartości odwiedzonych atrakcji:
+
+\[
+\max \sum_{i \in A} v_i \cdot y_i
+\]
+
+\subsection{Ograniczenia}
+
+\textbf{1. Start:}
+\[
+\sum_{j} x_{s j} = 1
+\]
+
+\textbf{2. Koniec:}
+\[
+\sum_{i} x_{i t} = 1
+\]
+
+\textbf{3. Zachowanie przepływu:}
+\[
+\sum_{i} x_{i k} = \sum_{j} x_{k j} \quad \forall k \in V \setminus \{s,t\}
+\]
+
+\textbf{4. Ograniczenie czasu:}
+\[
+\sum_{(i,j)\in E} c_{ij} \cdot x_{ij} + \sum_{i\in A} y_{i} \cdot t_{\tau_i} \leq T
+\]
+
+\textbf{5. Ograniczenie budżetu:}
+\[
+\sum_{i \in A} p_i \cdot y_i \leq B
+\]
+
+\textbf{6. Ograniczenia ilościowe na konkretne atrakcje:}
+\[
+l_{\tau} \leq \sum_{\substack{i \in A \\ \tau_i = \tau}} y_i \leq u_{\tau}
+\quad \forall \tau \in \mathcal{T}
+\]
+
+
+\textbf{7. Powiązanie atrakcji ze ścieżką:}
+
+Atrakcja może być odwiedzona tylko jeśli ścieżka przez nią przechodzi:
+\[
+y_i \leq \sum_{j} x_{ji} \quad \forall i \in A
+\]
+
+\textbf{8. Binarność:}
+\[
+x_{ij} \in \{0,1\}, \quad y_i \in \{0,1\}
+\]
+
+\section{Planowane metody rozwiązania}
+
+Ze względu na złożoność problemu (NP-trudny), planowane jest zastosowanie metod heurystycznych i metaheurystycznych:
+
+\begin{itemize}
+    \item Algorytmy pszczele
+
+\end{itemize}
+
+\section{Oczekiwane rezultaty}
+
+\begin{itemize}
+    \item implementacja algorytmów,
+    \item wizualizacja tras na siatce,
+    \item analiza jakości rozwiązań (value vs koszt),
+    \item porównanie efektywności metod,
+    \item wnioski dotyczące zastosowania algorytmów rojowych w problemach decyzyjnych.
+\end{itemize}
+
+\end{document}
