@@ -25,7 +25,7 @@ Parametry:
 - `--onlookers` – (opcjonalnie) liczba prób fazy onlooker na iterację
 - `--seed` – (opcjonalnie) ziarno losowości
 
-### 3) Wizualizacja
+### 3) Wizualizacj
 
 ```bash
 python visualize_paths.py
