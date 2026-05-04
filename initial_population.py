@@ -45,7 +45,7 @@ def movement_cost(path, weight):
 
 
 def evaluate_path(path, parsed_data):
-    weight = parsed_data["weight"]
+    move_time = parsed_data["move_time"]
     time_limit = parsed_data["time_limit"]
     budget = parsed_data["budget"]
     attraction_map = parsed_data["attraction_map"]
@@ -76,8 +76,8 @@ def evaluate_path(path, parsed_data):
             total_value += attr["value"]
             type_counts[attr_type] += 1
 
-    move_cost = movement_cost(path, weight)
-    total_time = move_cost + attraction_time_sum
+    movement_time = movement_cost(path, move_time)
+    total_time = movement_time + attraction_time_sum
 
     budget_ok = attraction_cost_sum <= budget
     time_ok = total_time <= time_limit
@@ -95,7 +95,7 @@ def evaluate_path(path, parsed_data):
         "path": path,
         "visited_attractions": visited_attractions,
         "used_attractions": used_attractions,
-        "movement_cost": move_cost,
+        "movement_time": movement_time,
         "attraction_cost": attraction_cost_sum,
         "total_time": total_time,
         "total_value": total_value,
@@ -116,7 +116,7 @@ def print_population_stats(population, attraction_types):
     avg_total_time = mean(sol["total_time"] for sol in population)
     avg_attraction_cost = mean(sol["attraction_cost"] for sol in population)
     avg_attraction_count = mean(len(sol["used_attractions"]) for sol in population)
-    avg_movement_cost = mean(sol["movement_cost"] for sol in population)
+    avg_movement_time = mean(sol["movement_time"] for sol in population)
     avg_total_value = mean(sol["total_value"] for sol in population)
     avg_path_length = mean(len(sol["path"]) for sol in population)
 
@@ -128,8 +128,8 @@ def print_population_stats(population, attraction_types):
     print(f"Spełnia ograniczenia typów: {type_ok_count}/{len(population)}")
     print()
     print(f"Średni całkowity czas: {avg_total_time:.2f}")
-    print(f"Średni koszt ruchu: {avg_movement_cost:.2f}")
-    print(f"Średni użyty budżet: {avg_attraction_cost:.2f}")
+    print(f"Średni czas ruchu: {avg_movement_time:.2f}")
+    print(f"Średnio wydany budżet (ceny atrakcji): {avg_attraction_cost:.2f}")
     print(f"Średnia liczba atrakcji: {avg_attraction_count:.2f}")
     print(f"Średnia wartość atrakcji: {avg_total_value:.2f}")
     print(f"Średnia długość ścieżki (liczba pól): {avg_path_length:.2f}")
@@ -154,7 +154,7 @@ def save_population_to_json(population, filename="initial_population.json"):
             "path": [[r, c] for r, c in sol["path"]],
             "visited_attractions": [[r, c] for r, c in sol["visited_attractions"]],
             "used_attractions": [[r, c] for r, c in sol["used_attractions"]],
-            "movement_cost": sol["movement_cost"],
+            "movement_time": sol["movement_time"],
             "attraction_cost": sol["attraction_cost"],
             "total_time": sol["total_time"],
             "total_value": sol["total_value"],
@@ -186,15 +186,15 @@ if __name__ == "__main__":
 
     args = ap.parse_args()
 
-    weight, time_limit, budget, attractions, attraction_types = load_map_from_json(args.map)
-    parsed_data = parse_map(weight, time_limit, budget, attractions, attraction_types)
+    move_time, time_limit, budget, attractions, attraction_types = load_map_from_json(args.map)
+    parsed_data = parse_map(move_time, time_limit, budget, attractions, attraction_types)
 
     start, end = _default_start_end(parsed_data["rows"], parsed_data["cols"], None, None)
 
     if args.seed is not None:
         random.seed(args.seed)
 
-    population = generate_abc_population(
+    abc_result = generate_abc_population(
         parsed_data,
         population_size=args.population_size,
         start=start,
@@ -206,19 +206,21 @@ if __name__ == "__main__":
         evaluate_path_fn=evaluate_path,
     )
 
+    population = abc_result["population"]
+
     print_population_stats(population, parsed_data["attraction_types"])
     save_population_to_json(population, args.out)
 
     # pokaż najlepszą trasę wg metryki porównania
     best = max(
         population,
-        key=lambda s: (s["total_value"], -s["total_time"], -s["movement_cost"], -s["attraction_cost"]),
+        key=lambda s: (s["total_value"], -s["total_time"], -s["movement_time"], -s["attraction_cost"]),
     )
 
     print("\n=== PRZYKŁADOWA (NAJLEPSZA) TRASA ===")
     print(f"Długość ścieżki: {len(best['path'])}")
-    print(f"Koszt ruchu: {best['movement_cost']:.2f}")
-    print(f"Koszt atrakcji: {best['attraction_cost']}")
+    print(f"Czas ruchu: {best['movement_time']:.2f} min")
+    print(f"Koszt atrakcji (ceny): {best['attraction_cost']}")
     print(f"Całkowity czas: {best['total_time']:.2f}")
     print(f"Wartość: {best['total_value']}")
     print(f"Liczba atrakcji: {len(best['used_attractions'])}")

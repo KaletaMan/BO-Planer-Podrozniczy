@@ -2,12 +2,13 @@ from abc_algorithm import generate_abc_population
 
 
 def _abc_evaluate_path(path, parsed_data):
-    weight = parsed_data["weight"]
+    move_time = parsed_data["move_time"]
+    time_limit = parsed_data["time_limit"]
     budget = parsed_data["budget"]
     attraction_map = parsed_data["attraction_map"]
     attraction_types = parsed_data["attraction_types"]
 
-    movement_cost = 0.0
+    movement_time = 0.0
     attraction_cost = 0
     attraction_time = 0
     total_value = 0
@@ -20,7 +21,7 @@ def _abc_evaluate_path(path, parsed_data):
         r1, c1 = path[i]
         r2, c2 = path[i + 1]
         diagonal = abs(r2 - r1) == 1 and abs(c2 - c1) == 1
-        movement_cost += weight[r1][c1] * (1.4 if diagonal else 1.0)
+        movement_time += move_time[r1][c1] * (1.4 if diagonal else 1.0)
 
     for pos in path:
         if pos in attraction_map and pos not in visited_set:
@@ -29,26 +30,30 @@ def _abc_evaluate_path(path, parsed_data):
             t_id = attr["type"]
 
             visited_attractions.append(pos)
-            attraction_cost += attr["cost"]
-            attraction_time += attraction_types[t_id]["time"]
+            attraction_cost += int(attr.get("cost", 0) or 0)
+            # UI doesn't model visit time per-type yet.
+            attraction_time += 0
             total_value += attr["value"]
             type_counts[t_id] += 1
 
-    total_time = movement_cost + attraction_time
+    total_time = movement_time + attraction_time
+
+    time_ok = movement_time <= time_limit
+    budget_ok = attraction_cost <= budget
 
     return {
         "path": path,
         "visited_attractions": visited_attractions,
         "used_attractions": visited_attractions,
-        "movement_cost": movement_cost,
+        "movement_time": movement_time,
         "attraction_cost": attraction_cost,
         "total_time": total_time,
         "total_value": total_value,
         "type_counts": type_counts,
-        "budget_ok": attraction_cost <= budget,
-        "time_ok": True,
+        "budget_ok": budget_ok,
+        "time_ok": time_ok,
         "type_ok": True,
-        "feasible": attraction_cost <= budget,
+        "feasible": budget_ok and time_ok,
     }
 
 
@@ -72,16 +77,16 @@ def _ui_map_to_abc(map_data):
 
         attraction_map[pos] = {
             "value": a["value"],
-            "cost": 1,
+            "cost": int(a.get("cost", 0) or 0),
             "type": type_id,
         }
 
     return {
-        "weight": map_data["weights"],
+        "move_time": map_data["weights"],
         "rows": map_data["height"],
         "cols": map_data["width"],
-        "time_limit": 999999,
-        "budget": map_data.get("budget", 999999),
+        "time_limit": int(map_data.get("time_limit", 0) or 0),
+        "budget": int(map_data.get("budget", 0) or 0),
         "attraction_map": attraction_map,
         "attraction_types": parsed_types,
         "attraction_positions": list(attraction_map.keys()),
@@ -108,6 +113,7 @@ def solve_abc_ui(
         iterations=iterations,
         limit=limit,
         seed=seed,
+        deduplicate=False,
         evaluate_path_fn=_abc_evaluate_path,
     )
 

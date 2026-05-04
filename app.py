@@ -24,9 +24,12 @@ def _default_map() -> dict:
     return generate_map(
         width=10, height=10,
         n_attractions=4, value_min=3, value_max=10,
+        cost_min=5, cost_max=30,
         weight_distribution="uniform", weight_min=1, weight_max=5,
         start=(0, 0), end=(9, 9),
-        budget=50, seed=42,
+        time_limit=50,
+        budget=50,
+        seed=42,
         name="Nowa mapa",
         attraction_types=DEFAULT_TYPES,
     )
@@ -73,6 +76,10 @@ if mode == "Edytor / Generator":
             val_min = c5.number_input("Wartość min atrakcji", value=3, min_value=1, step=1)
             val_max = c6.number_input("Wartość max atrakcji", value=10, min_value=1, step=1)
 
+            c_cost1, c_cost2 = st.columns(2)
+            cost_min = c_cost1.number_input("Cena min atrakcji", value=5, min_value=0, step=1)
+            cost_max = c_cost2.number_input("Cena max atrakcji", value=30, min_value=0, step=1)
+
             types_raw = st.text_input(
                 "Typy atrakcji (przecinki)",
                 value=", ".join(st.session_state.map_data.get("attraction_types", DEFAULT_TYPES)),
@@ -92,7 +99,9 @@ if mode == "Edytor / Generator":
             ex = c11.number_input("End x",   value=width - 1,  min_value=0, max_value=width - 1,  step=1)
             ey = c12.number_input("End y",   value=height - 1, min_value=0, max_value=height - 1, step=1)
 
-            budget = st.slider("Budżet (maks. łączny koszt)", 10, width * height * 10, 50)
+            c_budget1, c_budget2 = st.columns(2)
+            time_limit = c_budget1.slider("Limit czasu (min)", 10, width * height * 10, 50)
+            budget = c_budget2.slider("Budżet (ceny atrakcji)", 0, max(50, n_attr * int(max(cost_min, cost_max))), 50)
 
             gen_btn = st.form_submit_button("Wygeneruj", type="primary")
 
@@ -102,10 +111,14 @@ if mode == "Edytor / Generator":
                 width=int(width), height=int(height),
                 n_attractions=int(n_attr),
                 value_min=int(val_min), value_max=int(val_max),
+                cost_min=int(min(cost_min, cost_max)),
+                cost_max=int(max(cost_min, cost_max)),
                 weight_distribution=dist,
                 weight_min=int(w_min), weight_max=int(w_max),
                 start=(int(sx), int(sy)), end=(int(ex), int(ey)),
-                budget=int(budget), seed=int(seed),
+                time_limit=int(time_limit),
+                budget=int(budget),
+                seed=int(seed),
                 name=st.session_state.map_data.get("name", "Nowa mapa"),
                 attraction_types=parsed_types,
             )
@@ -119,17 +132,20 @@ if mode == "Edytor / Generator":
         inst = st.session_state.map_data
 
         new_name = st.text_input("Nazwa mapy", value=inst.get("name", ""))
-        new_budget = st.number_input("Budżet", value=int(inst.get("budget", 50)), min_value=1, step=1)
+        c_edit1, c_edit2 = st.columns(2)
+        new_time_limit = c_edit1.number_input("Limit czasu (min)", value=int(inst.get("time_limit", 50)), min_value=1, step=1)
+        new_budget = c_edit2.number_input("Budżet (ceny atrakcji)", value=int(inst.get("budget", 50)), min_value=0, step=1)
 
         current_types = inst.get("attraction_types", DEFAULT_TYPES) or DEFAULT_TYPES
-        st.markdown("**Atrakcje** (id, x, y, wartość, typ)")
+        st.markdown("**Atrakcje** (id, x, y, wartość, cena, typ)")
         raw_attrs = inst.get("attractions", [])
-        attr_df = pd.DataFrame(raw_attrs) if raw_attrs else pd.DataFrame(columns=["id", "x", "y", "value", "type"])
-        for col in ["id", "x", "y", "value", "type"]:
+        attr_df = pd.DataFrame(raw_attrs) if raw_attrs else pd.DataFrame(columns=["id", "x", "y", "value", "cost", "type"])
+        for col in ["id", "x", "y", "value", "cost", "type"]:
             if col not in attr_df.columns:
                 attr_df[col] = None
-        attr_df = attr_df[["id", "x", "y", "value", "type"]]
+        attr_df = attr_df[["id", "x", "y", "value", "cost", "type"]]
         attr_df["type"] = attr_df["type"].fillna(current_types[0])
+        attr_df["cost"] = attr_df["cost"].fillna(0)
 
         edited_attr = st.data_editor(
             attr_df,
@@ -140,6 +156,7 @@ if mode == "Edytor / Generator":
                 "x":     st.column_config.NumberColumn("x", min_value=0, max_value=inst.get("width", 30) - 1, step=1),
                 "y":     st.column_config.NumberColumn("y", min_value=0, max_value=inst.get("height", 30) - 1, step=1),
                 "value": st.column_config.NumberColumn("Wartość", min_value=0, step=1),
+                "cost":  st.column_config.NumberColumn("Cena", min_value=0, step=1),
                 "type":  st.column_config.SelectboxColumn("Typ", options=current_types, required=True),
             },
             use_container_width=True,
@@ -153,6 +170,7 @@ if mode == "Edytor / Generator":
                 "x":     int(r["x"])     if r.get("x")     is not None else 0,
                 "y":     int(r["y"])     if r.get("y")     is not None else 0,
                 "value": int(r["value"]) if r.get("value") is not None else 1,
+                "cost":  int(r["cost"])  if r.get("cost")  is not None else 0,
                 "type":  str(r["type"])  if r.get("type")  is not None and str(r.get("type", "")).strip() not in ("", "nan", "None") else current_types[0],
             }
             for i, r in enumerate(edited_attr.to_dict("records"))
@@ -162,6 +180,7 @@ if mode == "Edytor / Generator":
         updated = {
             **inst,
             "name": new_name,
+            "time_limit": int(new_time_limit),
             "budget": int(new_budget),
             "attractions": new_attrs,
             "attraction_types": current_types,
@@ -229,12 +248,9 @@ if mode == "Edytor / Generator":
         plt = __import__("matplotlib.pyplot", fromlist=["pyplot"])
         plt.close(fig)
 
-        # ── Algorithm stub ────────────────────────────────────────────────────
-        st.subheader("Uruchom algorytm (stub)")
-        st.caption(
-            "To stub — prawdziwy GA/Bee podłączymy gdy będzie gotowy. "
-            "Interfejs `solve(map, params) → path` + `evaluate_path(map, path)` jest stabilny."
-        )
+        # ── Algorithm ────────────────────────────────────────────────────────
+        st.subheader("Uruchom algorytm")
+        st.caption("Wybierz metodę i uruchom. Wynik zostanie narysowany na mapie.")
 
         algo = st.radio("Algorytm", ["Greedy (zachłanny)", "Random walk", "ABC"], horizontal=True)
         run_btn = st.button("Uruchom ▶", type="primary")
@@ -272,11 +288,14 @@ if mode == "Edytor / Generator":
 
         if st.session_state.last_eval:
             ev = st.session_state.last_eval
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Koszt", ev["cost"])
-            c2.metric("Budżet", st.session_state.map_data.get("budget"))
-            c3.metric("Wartość", ev["value_collected"])
-            c4.metric("Atrakcje", len(ev["attractions_visited"]))
+            c1, c2, c3, c4, c5, c6, c7 = st.columns(7)
+            c1.metric("Czas ruchu (min)", round(float(ev.get("movement_time", ev.get("cost", 0.0))), 2))
+            c2.metric("Limit czasu (min)", st.session_state.map_data.get("time_limit"))
+            c3.metric("Wydane (ceny)", round(float(ev.get("attraction_cost", 0.0)), 2))
+            c4.metric("Budżet (ceny)", st.session_state.map_data.get("budget"))
+            c5.metric("Wartość", ev.get("value_collected", 0))
+            c6.metric("Atrakcje", len(ev.get("attractions_visited", [])))
+            c7.metric("Długość ścieżki", ev.get("path_length", len(st.session_state.last_path or [])))
             if "last_history" in st.session_state and st.session_state.last_history:
                 st.subheader("Konwergencja ABC")
 
@@ -290,9 +309,9 @@ if mode == "Edytor / Generator":
                     y="best_value"
                 )
             if ev["feasible"]:
-                st.success("Ścieżka mieści się w budżecie.")
+                st.success("Ścieżka spełnia ograniczenia (czas + budżet).")
             else:
-                st.warning(f"Przekroczono budżet: {ev['reason']}")
+                st.warning(ev.get("reason", "Ścieżka niespełnia ograniczeń."))
 
             if st.button("Wyczyść ścieżkę"):
                 st.session_state.last_path = None
@@ -344,7 +363,7 @@ else:
 
     if map_data is None:
         map_data = {"width": 10, "height": 10, "weights": [[1]*10 for _ in range(10)],
-                    "attractions": [], "start": {"x": 0, "y": 0}, "end": {"x": 9, "y": 9}, "budget": 100}
+                    "attractions": [], "start": {"x": 0, "y": 0}, "end": {"x": 9, "y": 9}, "time_limit": 100, "budget": 100}
 
     runs = res_data.get("runs", [])
     if not runs:

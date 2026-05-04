@@ -38,14 +38,17 @@ def validate_map(data: Dict[str, Any]) -> List[ValidationIssue]:
     attractions = data.get("attractions")
     start = data.get("start")
     end = data.get("end")
+    time_limit = data.get("time_limit")
     budget = data.get("budget")
 
     if not isinstance(width, int) or width <= 0:
         issues.append(ValidationIssue("error", f"'width' musi być dodatnim int-em, jest: {width}."))
     if not isinstance(height, int) or height <= 0:
         issues.append(ValidationIssue("error", f"'height' musi być dodatnim int-em, jest: {height}."))
-    if not isinstance(budget, (int, float)) or budget <= 0:
-        issues.append(ValidationIssue("error", f"'budget' musi być > 0, jest: {budget}."))
+    if not isinstance(time_limit, (int, float)) or time_limit <= 0:
+        issues.append(ValidationIssue("error", f"'time_limit' musi być > 0 (minuty), jest: {time_limit}."))
+    if not isinstance(budget, (int, float)) or budget < 0:
+        issues.append(ValidationIssue("error", f"'budget' musi być >= 0 (budżet pieniężny), jest: {budget}."))
 
     w = width if isinstance(width, int) and width > 0 else None
     h = height if isinstance(height, int) and height > 0 else None
@@ -109,13 +112,20 @@ def validate_map(data: Dict[str, Any]) -> List[ValidationIssue]:
             if not isinstance(val, (int, float)) or val < 0:
                 issues.append(ValidationIssue("warning", f"Atrakcja '{aid}': wartość {val} powinna być >= 0."))
 
+            if "cost" not in a:
+                issues.append(ValidationIssue("error", f"Atrakcja '{aid}': brakuje pola 'cost' (cena)."))
+            else:
+                cost = a.get("cost")
+                if not isinstance(cost, (int, float)) or cost < 0:
+                    issues.append(ValidationIssue("error", f"Atrakcja '{aid}': cena {cost} musi być >= 0."))
+
         if w and h and len(attractions) > 0:
             density = len(attractions) / (w * h)
             if density > 0.3:
                 issues.append(ValidationIssue("warning", f"Gęstość atrakcji {density:.0%} > 30% — mapa jest bardzo gęsta."))
 
-    # Budget feasibility hint
-    if w and h and isinstance(budget, (int, float)) and isinstance(start, dict) and isinstance(end, dict):
+    # Time limit feasibility hint (rough lower bound for start->end)
+    if w and h and isinstance(time_limit, (int, float)) and isinstance(start, dict) and isinstance(end, dict):
         try:
             from src.map_generator import _chebyshev
             dist = _chebyshev(start["x"], start["y"], end["x"], end["y"])
@@ -124,8 +134,8 @@ def validate_map(data: Dict[str, Any]) -> List[ValidationIssue]:
                 if flat:
                     min_w = min(flat)
                     rough_min = dist * min_w
-                    if rough_min > budget:
-                        issues.append(ValidationIssue("warning", f"Szacowany min. koszt ({rough_min}) > budżet ({budget}) — instancja może być infeasible."))
+                    if rough_min > time_limit:
+                        issues.append(ValidationIssue("warning", f"Szacowany min. czas ruchu ({rough_min}) > limit czasu ({time_limit}) — instancja może być infeasible."))
         except Exception:
             pass
 

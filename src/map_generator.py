@@ -12,11 +12,14 @@ def generate_map(
     n_attractions: int,
     value_min: int,
     value_max: int,
+    cost_min: int,
+    cost_max: int,
     weight_distribution: str,
     weight_min: int,
     weight_max: int,
     start: Optional[tuple[int, int]],
     end: Optional[tuple[int, int]],
+    time_limit: int,
     budget: int,
     seed: int,
     name: str = "",
@@ -45,6 +48,7 @@ def generate_map(
                 "x": x,
                 "y": y,
                 "value": rng.randint(value_min, value_max),
+                "cost": rng.randint(cost_min, cost_max),
                 "type": types[len(attractions) % len(types)],
             })
         attempts += 1
@@ -59,6 +63,7 @@ def generate_map(
         "attraction_types": types,
         "start": {"x": start[0], "y": start[1]},
         "end": {"x": end[0], "y": end[1]},
+        "time_limit": int(time_limit),
         "budget": budget,
         "seed": seed,
     }

@@ -1,6 +1,6 @@
 {
   "name": "Small 8x8 - 4 atrakcje",
-  "notes": "Mala mapa demonstracyjna. Uniform weights, budzet 30.",
+  "notes": "Mala mapa demonstracyjna. Uniform weights. time_limit=30 min, budzet atrakcji=30.",
   "width": 8,
   "height": 8,
   "weights": [
@@ -91,6 +91,7 @@
       "x": 1,
       "y": 5,
       "value": 5,
+      "cost": 6,
       "type": "zabytek"
     },
     {
@@ -98,6 +99,7 @@
       "x": 5,
       "y": 7,
       "value": 7,
+      "cost": 8,
       "type": "przyroda"
     },
     {
@@ -105,6 +107,7 @@
       "x": 7,
       "y": 1,
       "value": 3,
+      "cost": 4,
       "type": "zabytek"
     },
     {
@@ -112,6 +115,7 @@
       "x": 4,
       "y": 7,
       "value": 8,
+      "cost": 10,
       "type": "przyroda"
     }
   ],
@@ -127,6 +131,7 @@
     "x": 7,
     "y": 7
   },
+  "time_limit": 30,
   "budget": 30,
   "seed": 7
 }

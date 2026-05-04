@@ -128,7 +128,7 @@ def build_path_from_waypoints(parsed_data, waypoints, start=None, end=None):
     """Buduje ścieżkę po siatce łącząc waypointy, bez powtórzeń pól i krawędzi."""
     rows = parsed_data["rows"]
     cols = parsed_data["cols"]
-    weight = parsed_data["weight"]
+    move_time = parsed_data["move_time"]
     attraction_positions = set(parsed_data["attraction_positions"])
 
     start, end = _default_start_end(rows, cols, start, end)
@@ -140,7 +140,7 @@ def build_path_from_waypoints(parsed_data, waypoints, start=None, end=None):
     if len(mid) != len(set(mid)):
         return None
 
-    min_weight = _grid_min_weight(weight)
+    min_weight = _grid_min_weight(move_time)
     visited_cells = {start}
     used_edges = set()
     full_path = [start]
@@ -155,7 +155,7 @@ def build_path_from_waypoints(parsed_data, waypoints, start=None, end=None):
         segment = _a_star_path(
             rows,
             cols,
-            weight,
+            move_time,
             a,
             b,
             blocked_cells=blocked_cells,
@@ -182,8 +182,8 @@ def build_path_from_waypoints(parsed_data, waypoints, start=None, end=None):
 def _solution_is_better(a, b):
     if b is None:
         return True
-    ka = (a["total_value"], -a["total_time"], -a["movement_cost"], -a["attraction_cost"])
-    kb = (b["total_value"], -b["total_time"], -b["movement_cost"], -b["attraction_cost"])
+    ka = (a["total_value"], -a["total_time"], -a["movement_time"], -a["attraction_cost"])
+    kb = (b["total_value"], -b["total_time"], -b["movement_time"], -b["attraction_cost"])
     return ka > kb
 
 
@@ -193,7 +193,7 @@ def _rank_weights(population):
         key=lambda i: (
             population[i]["total_value"],
             -population[i]["total_time"],
-            -population[i]["movement_cost"],
+            -population[i]["movement_time"],
             -population[i]["attraction_cost"],
         ),
         reverse=True,
@@ -261,7 +261,6 @@ def _random_waypoints(parsed_data, start, end, max_extra_total=8):
     chosen_set = set()
     counts = list(base_counts)
 
-    # twardo realizuj minima
     for t_id, info in enumerate(attraction_types):
         needed = max(0, info["min"] - counts[t_id])
         if needed <= 0:
@@ -276,7 +275,7 @@ def _random_waypoints(parsed_data, start, end, max_extra_total=8):
             chosen_set.add(p)
             counts[t_id] += 1
 
-    # dodaj trochę ekstra (ale nie musisz)
+    
     remaining = [p for p in attraction_positions if p not in chosen_set and p not in (start, end)]
     if remaining:
         extra_cap = min(max_extra_total, len(remaining))
@@ -482,7 +481,7 @@ def generate_abc_population(
             key=lambda s: (
                 s["total_value"],
                 -s["total_time"],
-                -s["movement_cost"],
+                -s["movement_time"],
                 -s["attraction_cost"]
             )
         )
@@ -491,7 +490,7 @@ def generate_abc_population(
             "iteration": _it + 1,
             "best_value": best["total_value"],
             "best_time": best["total_time"],
-            "movement_cost": best["movement_cost"],
+            "movement_time": best["movement_time"],
             "attraction_cost": best["attraction_cost"],
             "visited_count": len(best["visited_attractions"]),
         })
@@ -504,7 +503,7 @@ def generate_abc_population(
         key=lambda s: (
             s["total_value"],
             -s["total_time"],
-            -s["movement_cost"],
+            -s["movement_time"],
             -s["attraction_cost"]
         )
     )

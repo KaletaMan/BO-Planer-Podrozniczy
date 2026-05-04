@@ -22,11 +22,11 @@ def draw_paths(
     map_data = load_map_json(map_file)
     population = load_population_json(population_file)
 
-    weight = map_data["weight"]
+    move_time = map_data["move_time"]
     attractions = map_data["attractions"]
 
-    rows = len(weight)
-    cols = len(weight[0])
+    rows = len(move_time)
+    cols = len(move_time[0])
 
     if start is None:
         start = (5, 5)

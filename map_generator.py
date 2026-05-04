@@ -2,18 +2,18 @@ import json
 import random
 
 
-def generate_weight(rows, cols, min_val=7, max_val=12):
+def generate_move_time(rows, cols, min_val=7, max_val=12):
     """
-    Generuje losową mapę wag.
+    Generuje losową mapę czasu przejścia (w minutach).
 
     Parametry:
     - rows: liczba wierszy
     - cols: liczba kolumn
-    - min_val: minimalna wartość wagi (domyślnie 7)
-    - max_val: maksymalna wartość wagi (domyślnie 12)
+    - min_val: minimalny czas (domyślnie 7)
+    - max_val: maksymalny czas (domyślnie 12)
 
     Zwraca:
-    - lista list (rows x cols) z intami
+    - lista list (rows x cols) z intami (minuty)
     """
 
     if rows <= 0 or cols <= 0:
@@ -22,12 +22,12 @@ def generate_weight(rows, cols, min_val=7, max_val=12):
     if min_val > max_val:
         raise ValueError("min_val nie może być większe od max_val")
 
-    weight = [
+    move_time = [
         [random.randint(min_val, max_val) for _ in range(cols)]
         for _ in range(rows)
     ]
 
-    return weight
+    return move_time
 
 
 def add_attraction_type(
@@ -46,8 +46,8 @@ def add_attraction_type(
     Dodaje nowy typ atrakcji oraz losowo rozmieszcza atrakcje tego typu na mapie.
 
     Parametry:
-    - attractions: lista istniejących atrakcji w formacie
-      [row, col, value, cost, type]
+        - attractions: lista istniejących atrakcji w formacie
+            [row, col, value, price, type]
     - attraction_types: lista istniejących typów w formacie
       [time, min, max]
     - rows, cols: rozmiar mapy
@@ -56,7 +56,7 @@ def add_attraction_type(
     - max_count: maksymalna liczba atrakcji tego typu, które można odwiedzić
     - number_on_map: ile atrakcji tego typu wylosować na mapie
     - value_range: krotka (min_value, max_value)
-    - cost_range: krotka (min_cost, max_cost)
+    - cost_range: krotka (min_price, max_price) — cena atrakcji (budżet)
 
     Zwraca:
     - (new_attractions, new_attraction_types)
@@ -117,7 +117,7 @@ def add_attraction_type(
 
 
 def save_map_to_json(
-    weight,
+    move_time,
     time_limit,
     budget,
     attractions,
@@ -128,20 +128,20 @@ def save_map_to_json(
     Zapisuje dane mapy do pliku JSON.
 
     Parametry:
-    - weight: lista list intów (siatka)
-    - time_limit: int
-    - budget: int
-    - attractions: lista [row, col, value, cost, type]
-    - attraction_types: lista [time, min, max]
+    - move_time: lista list intów (siatka czasu w minutach)
+    - time_limit: int (minuty)
+    - budget: int (budżet pieniężny)
+    - attractions: lista [row, col, value, price, type]
+    - attraction_types: lista [visit_time_min, min, max]
     - filename: nazwa pliku (domyślnie map.json)
     """
 
-    if not weight or not isinstance(weight[0], list):
-        raise ValueError("weight musi być listą list")
+    if not move_time or not isinstance(move_time[0], list):
+        raise ValueError("move_time musi być listą list")
 
-    for row in weight:
+    for row in move_time:
         if not all(isinstance(x, int) for x in row):
-            raise ValueError("weight musi zawierać inty")
+            raise ValueError("move_time musi zawierać inty")
 
     for a in attractions:
         if len(a) != 5:
@@ -152,8 +152,8 @@ def save_map_to_json(
             raise ValueError("typ atrakcji musi mieć format [time, min, max]")
 
     data = {
-        "weight": weight,
-        "time": time_limit,
+        "move_time": move_time,
+        "time_limit": time_limit,
         "budget": budget,
         "attractions": attractions,
         "attraction_types": attraction_types
@@ -172,7 +172,7 @@ if __name__ == "__main__":
     time_limit = 800
     budget = 300
 
-    weight = generate_weight(rows, cols, min_val=7, max_val=12)
+    move_time = generate_move_time(rows, cols, min_val=7, max_val=12)
 
     attractions = []
     attraction_types = []
@@ -220,7 +220,7 @@ if __name__ == "__main__":
     )
 
     save_map_to_json(
-        weight=weight,
+        move_time=move_time,
         time_limit=time_limit,
         budget=budget,
         attractions=attractions,

@@ -1,6 +1,6 @@
 {
   "name": "Medium 15x15 - 8 atrakcji",
-  "notes": "Srednia instancja. Wagi klastrowane, budzet 80, 3 typy atrakcji.",
+  "notes": "Srednia instancja. Wagi klastrowane. time_limit=80 min, budzet atrakcji=80. 3 typy atrakcji.",
   "width": 15,
   "height": 15,
   "weights": [
@@ -266,6 +266,7 @@
       "x": 9,
       "y": 3,
       "value": 4,
+      "cost": 8,
       "type": "zabytek"
     },
     {
@@ -273,6 +274,7 @@
       "x": 1,
       "y": 11,
       "value": 4,
+      "cost": 10,
       "type": "przyroda"
     },
     {
@@ -280,6 +282,7 @@
       "x": 3,
       "y": 1,
       "value": 4,
+      "cost": 7,
       "type": "restauracja"
     },
     {
@@ -287,6 +290,7 @@
       "x": 13,
       "y": 5,
       "value": 5,
+      "cost": 9,
       "type": "zabytek"
     },
     {
@@ -294,6 +298,7 @@
       "x": 8,
       "y": 3,
       "value": 8,
+      "cost": 12,
       "type": "przyroda"
     },
     {
@@ -301,6 +306,7 @@
       "x": 10,
       "y": 7,
       "value": 7,
+      "cost": 11,
       "type": "restauracja"
     },
     {
@@ -308,6 +314,7 @@
       "x": 8,
       "y": 2,
       "value": 11,
+      "cost": 15,
       "type": "zabytek"
     },
     {
@@ -315,6 +322,7 @@
       "x": 3,
       "y": 12,
       "value": 11,
+      "cost": 14,
       "type": "przyroda"
     }
   ],
@@ -331,6 +339,7 @@
     "x": 14,
     "y": 14
   },
+  "time_limit": 80,
   "budget": 80,
   "seed": 42
 }

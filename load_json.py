@@ -6,33 +6,33 @@ def load_map_from_json(filename="map.json"):
     Wczytuje dane mapy z pliku JSON.
 
     Zwraca:
-    - weight
-    - time_limit
-    - budget
-    - attractions
-    - attraction_types
+    - move_time (minuty ruchu po siatce)
+    - time_limit (minuty)
+    - budget (budżet pieniężny)
+    - attractions (lista [row, col, value, price, type])
+    - attraction_types (lista [visit_time_min, min, max])
     """
 
     with open(filename, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    required_keys = ["weight", "time", "budget", "attractions", "attraction_types"]
+    required_keys = ["move_time", "time_limit", "budget", "attractions", "attraction_types"]
 
     for key in required_keys:
         if key not in data:
             raise ValueError(f"Brakuje klucza w JSON: {key}")
 
-    weight = data["weight"]
-    time_limit = data["time"]
+    move_time = data["move_time"]
+    time_limit = data["time_limit"]
     budget = data["budget"]
     attractions = data["attractions"]
     attraction_types = data["attraction_types"]
 
-    if not isinstance(weight, list) or not isinstance(weight[0], list):
-        raise ValueError("weight musi być listą list")
+    if not isinstance(move_time, list) or not isinstance(move_time[0], list):
+        raise ValueError("move_time musi być listą list")
 
     if not isinstance(time_limit, int):
-        raise ValueError("time musi być int")
+        raise ValueError("time_limit musi być int")
 
     if not isinstance(budget, int):
         raise ValueError("budget musi być int")
@@ -43,13 +43,13 @@ def load_map_from_json(filename="map.json"):
     if not isinstance(attraction_types, list):
         raise ValueError("attraction_types musi być listą")
 
-    return weight, time_limit, budget, attractions, attraction_types
+    return move_time, time_limit, budget, attractions, attraction_types
 
 
 if __name__ == "__main__":
-    weight, time_limit, budget, attractions, attraction_types = load_map_from_json("map.json")
+    move_time, time_limit, budget, attractions, attraction_types = load_map_from_json("map.json")
 
-    print("Rozmiar mapy:", len(weight), "x", len(weight[0]))
+    print("Rozmiar mapy:", len(move_time), "x", len(move_time[0]))
     print("Time limit:", time_limit)
     print("Budget:", budget)
     print("Liczba atrakcji:", len(attractions))

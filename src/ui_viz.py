@@ -91,7 +91,12 @@ def _draw_attractions(ax: plt.Axes, map_data: dict) -> None:
         size = 280 if marker == "*" else 130
         ax.scatter(x, y, marker=marker, s=size, c=color, edgecolors="black",
                    linewidths=0.7, zorder=3)
-        ax.text(x + 0.35, y + 0.35, f"{a['id']}\n+{a['value']}", fontsize=6,
+
+        label = f"{a['id']}\nV:{a.get('value', 0)}"
+        if "cost" in a and a.get("cost") is not None:
+            label += f"\nC:{a.get('cost', 0)}"
+
+        ax.text(x + 0.35, y + 0.35, label, fontsize=6,
                 ha="left", va="bottom", color="black",
                 bbox=dict(boxstyle="round,pad=0.15", fc="white", alpha=0.6))
         label = atype if atype else "brak typu"

@@ -1,4 +1,4 @@
-def parse_map(weight, time_limit, budget, attractions, attraction_types):
+def parse_map(move_time, time_limit, budget, attractions, attraction_types):
     """
     Przekształca dane z JSON do struktur wygodnych dla algorytmu.
 
@@ -6,8 +6,8 @@ def parse_map(weight, time_limit, budget, attractions, attraction_types):
     - parsed_data (dict)
     """
 
-    rows = len(weight)
-    cols = len(weight[0])
+    rows = len(move_time)
+    cols = len(move_time[0])
 
     attraction_map = {}
 
@@ -32,7 +32,7 @@ def parse_map(weight, time_limit, budget, attractions, attraction_types):
     attraction_positions = list(attraction_map.keys())
 
     parsed_data = {
-        "weight": weight,
+        "move_time": move_time,
         "rows": rows,
         "cols": cols,
         "time_limit": time_limit,
