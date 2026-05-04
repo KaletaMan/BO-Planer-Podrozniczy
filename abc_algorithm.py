@@ -1,5 +1,6 @@
 import heapq
 import random
+from typing import Callable, Optional
 
 
 def _default_start_end(rows, cols, start, end):
@@ -403,6 +404,8 @@ def generate_abc_population(
     deduplicate=True,
     *,
     evaluate_path_fn,
+    on_iteration: Optional[Callable[[int, dict, list, list], None]] = None,
+    should_stop: Optional[Callable[[], bool]] = None,
 ):
     """Generuje populację rozwiązań metodą ABC.
 
@@ -447,7 +450,12 @@ def generate_abc_population(
         )
 
     for _it in range(iterations):
+        if should_stop is not None and should_stop():
+            break
+
         for i in range(population_size):
+            if should_stop is not None and should_stop():
+                break
             cand = _mutate_waypoints(parsed_data, population[i], start, end, evaluate_path_fn)
             if cand is not None and _solution_is_better(cand, population[i]):
                 cand["id"] = population[i]["id"]
@@ -455,9 +463,14 @@ def generate_abc_population(
             else:
                 population[i]["trial"] = population[i].get("trial", 0) + 1
 
+        if should_stop is not None and should_stop():
+            break
+
         weights = _rank_weights(population)
         indices = list(range(population_size))
         for _k in range(onlookers):
+            if should_stop is not None and should_stop():
+                break
             i = random.choices(indices, weights=weights, k=1)[0]
             cand = _mutate_waypoints(parsed_data, population[i], start, end, evaluate_path_fn)
             if cand is not None and _solution_is_better(cand, population[i]):
@@ -466,7 +479,12 @@ def generate_abc_population(
             else:
                 population[i]["trial"] = population[i].get("trial", 0) + 1
 
+        if should_stop is not None and should_stop():
+            break
+
         for i in range(population_size):
+            if should_stop is not None and should_stop():
+                break
             if population[i].get("trial", 0) < limit:
                 continue
             repl = _random_feasible_solution(parsed_data, start, end, evaluate_path_fn)
@@ -475,6 +493,9 @@ def generate_abc_population(
                 continue
             repl["id"] = population[i]["id"]
             population[i] = repl
+
+        if should_stop is not None and should_stop():
+            break
 
         best = max(
             population,
@@ -494,6 +515,9 @@ def generate_abc_population(
             "attraction_cost": best["attraction_cost"],
             "visited_count": len(best["visited_attractions"]),
         })
+
+        if on_iteration is not None:
+            on_iteration(_it + 1, best, population, history)
 
     for i, sol in enumerate(population):
         sol["id"] = sol.get("id", i)

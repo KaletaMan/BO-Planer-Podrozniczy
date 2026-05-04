@@ -44,6 +44,13 @@ if "last_eval" not in st.session_state:
 if "dirty" not in st.session_state:
     st.session_state.dirty = False
 
+if "abc_cancel_requested" not in st.session_state:
+    st.session_state.abc_cancel_requested = False
+if "abc_partial" not in st.session_state:
+    st.session_state.abc_partial = None
+if "abc_running" not in st.session_state:
+    st.session_state.abc_running = False
+
 
 # ── Sidebar mode selector ─────────────────────────────────────────────────────
 
@@ -253,7 +260,14 @@ if mode == "Edytor / Generator":
         st.caption("Wybierz metodę i uruchom. Wynik zostanie narysowany na mapie.")
 
         algo = st.radio("Algorytm", ["Greedy (zachłanny)", "Random walk", "ABC"], horizontal=True)
+
         run_btn = st.button("Uruchom ▶", type="primary")
+
+        # If a rerun interrupted a previous ABC run, ensure we don't stay "running" forever.
+        if algo == "ABC" and st.session_state.get("abc_running", False) and not run_btn:
+            st.session_state.abc_running = False
+            if st.session_state.get("abc_partial"):
+                st.info("Poprzednie uruchomienie ABC zostało przerwane — najlepszy wynik jest zachowany.")
 
         if run_btn:
             errors = [i for i in validate_map(st.session_state.map_data) if i.level == "error"]
@@ -270,13 +284,88 @@ if mode == "Edytor / Generator":
                     )
                     ev = evaluate_path(st.session_state.map_data, path)
                 else:
+                    st.session_state.abc_cancel_requested = False
+                    st.session_state.abc_partial = None
+                    st.session_state.abc_running = True
+
+                    abc_iterations = 500
+
+                    redraw_every = 5
+
+                    stop_clicked = st.button("Zatrzymaj ⏹", type="secondary", key="abc_stop")
+                    if stop_clicked:
+                        st.session_state.abc_cancel_requested = True
+
+                    progress = st.progress(0)
+                    status = st.empty()
+                    map_placeholder = st.empty()
+                    table_placeholder = st.empty()
+                    chart_placeholder = st.empty()
+
+                    def _on_iter(payload: dict):
+                        st.session_state.abc_partial = payload
+                        it = payload["iteration"]
+                        hist = payload["history"]
+                        best = payload["best"]
+                        top_paths = payload.get("top_paths") or [payload["best_path"]]
+
+                        progress.progress(int(min(100, round(100 * it / max(1, abc_iterations)))))
+                        status.write(
+                            f"Iteracja: {it} | najlepsza wartość: {best.get('total_value')} | "
+                            f"czas: {round(float(best.get('total_time', 0.0)), 2)} | "
+                            f"atrakcje: {len(best.get('visited_attractions', []))}"
+                        )
+
+                        should_redraw = (it % redraw_every == 0) or (it == abc_iterations) or st.session_state.get("abc_cancel_requested", False)
+                        if should_redraw:
+                            paths_dict = {f"Best #{i+1}": p for i, p in enumerate(top_paths)}
+                            fig = plot_paths_comparison(
+                                st.session_state.map_data,
+                                paths_dict,
+                                title="ABC — najlepsze ścieżki",
+                                show_attraction_labels=False,
+                            )
+                            map_placeholder.pyplot(fig)
+                            plt = __import__("matplotlib.pyplot", fromlist=["pyplot"])
+                            plt.close(fig)
+
+                            import pandas as _pd
+
+                            if payload.get("top_solutions"):
+                                rows = []
+                                for rank, sol in enumerate(payload["top_solutions"], start=1):
+                                    rows.append({
+                                        "rank": rank,
+                                        "value": sol.get("total_value"),
+                                        "time": round(float(sol.get("total_time", 0.0)), 2),
+                                        "movement": round(float(sol.get("movement_time", 0.0)), 2),
+                                        "cost": sol.get("attraction_cost"),
+                                        "visited": len(sol.get("visited_attractions", [])),
+                                    })
+                                table_placeholder.dataframe(_pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+                            if hist:
+                                df = _pd.DataFrame(hist)
+                                chart_placeholder.line_chart(df, x="iteration", y="best_value")
+
+                        # Persist best-so-far so an interrupted run still leaves a usable result.
+                        st.session_state.last_path = payload["best_path"]
+                        if should_redraw:
+                            st.session_state.last_eval = evaluate_path(st.session_state.map_data, payload["best_path"])
+                        st.session_state.last_history = hist
+
                     abc_result = solve_abc_ui(
                         st.session_state.map_data,
                         population_size=30,
-                        iterations=100,
+                        iterations=abc_iterations,
                         limit=30,
                         seed=int(st.session_state.map_data.get("seed", 0)),
+                        on_iteration=_on_iter,
+                        should_stop=lambda: st.session_state.get("abc_cancel_requested", False),
+                        top_k=3,
                     )
+
+                    st.session_state.abc_running = False
 
                     path = abc_result["path"]
                     ev = evaluate_path(st.session_state.map_data, path)

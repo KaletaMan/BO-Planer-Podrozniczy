@@ -1,6 +1,20 @@
 from abc_algorithm import generate_abc_population
 
 
+def _abc_solution_key(sol: dict):
+    return (
+        sol.get("total_value", 0),
+        -sol.get("total_time", float("inf")),
+        -sol.get("movement_time", float("inf")),
+        -sol.get("attraction_cost", float("inf")),
+    )
+
+
+def _to_ui_path(abc_path):
+    # ABC uses (row, col), UI uses (x, y)
+    return [(c, r) for r, c in abc_path]
+
+
 def _abc_evaluate_path(path, parsed_data):
     move_time = parsed_data["move_time"]
     time_limit = parsed_data["time_limit"]
@@ -99,11 +113,30 @@ def solve_abc_ui(
     iterations=100,
     limit=30,
     seed=None,
+    *,
+    on_iteration=None,
+    should_stop=None,
+    top_k: int = 3,
 ):
     parsed_data = _ui_map_to_abc(map_data)
 
     start = (map_data["start"]["y"], map_data["start"]["x"])
     end = (map_data["end"]["y"], map_data["end"]["x"])
+
+    def _on_iter(it, best, population, history):
+        if on_iteration is None:
+            return
+        top = sorted(population, key=_abc_solution_key, reverse=True)[: max(1, int(top_k))]
+        on_iteration(
+            {
+                "iteration": it,
+                "history": history,
+                "best": best,
+                "best_path": _to_ui_path(best["path"]),
+                "top_solutions": top,
+                "top_paths": [_to_ui_path(s["path"]) for s in top],
+            }
+        )
 
     result = generate_abc_population(
         parsed_data,
@@ -115,13 +148,14 @@ def solve_abc_ui(
         seed=seed,
         deduplicate=False,
         evaluate_path_fn=_abc_evaluate_path,
+        on_iteration=_on_iter if on_iteration is not None else None,
+        should_stop=should_stop,
     )
 
     best = result["best"]
     history = result["history"]
 
-    # ABC zwraca (row, col), UI rysuje (x, y)
-    ui_path = [(c, r) for r, c in best["path"]]
+    ui_path = _to_ui_path(best["path"])
 
     return {
         "path": ui_path,
