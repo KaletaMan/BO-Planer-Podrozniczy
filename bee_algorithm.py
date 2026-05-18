@@ -13,9 +13,9 @@ def _default_start_end(rows, cols, start, end):
     er, ec = end
 
     if not (0 <= sr < rows and 0 <= sc < cols):
-        raise ValueError(f"start poza planszą: {start} przy {rows}x{cols}")
+        raise ValueError(f"start poza plansza: {start} przy {rows}x{cols}")
     if not (0 <= er < rows and 0 <= ec < cols):
-        raise ValueError(f"end poza planszą: {end} przy {rows}x{cols}")
+        raise ValueError(f"end poza plansza: {end} przy {rows}x{cols}")
     return start, end
 
 
@@ -33,14 +33,14 @@ def _optimistic_remaining_move_cost(cur, end, min_weight):
 
 def get_allowed_moves(r, c, rows, cols):
     candidate_moves = [
-        ((-1, 0), 1),  # góra
-        ((-1, 1), 1),  # góra-prawo
-        ((0, 1), 1),  # prawo
-        ((1, 1), 1),  # dół-prawo
-        ((1, 0), 1),  # dół
-        ((1, -1), 1),  # dół-lewo
-        ((0, -1), 1),  # lewo
-        ((-1, -1), 1),  # góra-lewo
+        ((-1, 0), 1),
+        ((-1, 1), 1),
+        ((0, 1), 1),
+        ((1, 1), 1),
+        ((1, 0), 1),
+        ((1, -1), 1),
+        ((0, -1), 1),
+        ((-1, -1), 1),
     ]
 
     allowed = []
@@ -57,7 +57,6 @@ def _canon_undirected_edge(a, b):
 
 
 def check_no_repeated_edges(path):
-    """Zwraca True jeśli żadna krawędź (nieskierowana) nie występuje 2 razy."""
     used = set()
     for i in range(len(path) - 1):
         e = _canon_undirected_edge(path[i], path[i + 1])
@@ -68,7 +67,6 @@ def check_no_repeated_edges(path):
 
 
 def _a_star_path(rows, cols, weight, start, goal, blocked_cells, forbidden_edges, min_weight=None):
-    """Najtańsza ścieżka wg kosztu ruchu (jak w movement_cost) w siatce 8-kierunkowej."""
     if start == goal:
         return [start]
 
@@ -126,7 +124,6 @@ def _a_star_path(rows, cols, weight, start, goal, blocked_cells, forbidden_edges
 
 
 def build_path_from_waypoints(parsed_data, waypoints, start=None, end=None):
-    """Buduje ścieżkę po siatce łącząc waypointy, bez powtórzeń pól i krawędzi."""
     rows = parsed_data["rows"]
     cols = parsed_data["cols"]
     move_time = parsed_data["move_time"]
@@ -135,7 +132,7 @@ def build_path_from_waypoints(parsed_data, waypoints, start=None, end=None):
     start, end = _default_start_end(rows, cols, start, end)
 
     if not waypoints or waypoints[0] != start or waypoints[-1] != end:
-        raise ValueError("waypoints muszą zaczynać się w start i kończyć w end")
+        raise ValueError("waypoints musza zaczynac sie w start i konczyc w end")
 
     mid = waypoints[1:-1]
     if len(mid) != len(set(mid)):
@@ -186,25 +183,6 @@ def _solution_is_better(a, b):
     ka = (a["total_value"], -a["total_time"], -a["movement_time"], -a["attraction_cost"])
     kb = (b["total_value"], -b["total_time"], -b["movement_time"], -b["attraction_cost"])
     return ka > kb
-
-
-def _rank_weights(population):
-    order = sorted(
-        range(len(population)),
-        key=lambda i: (
-            population[i]["total_value"],
-            -population[i]["total_time"],
-            -population[i]["movement_time"],
-            -population[i]["attraction_cost"],
-        ),
-        reverse=True,
-    )
-
-    n = len(population)
-    weights = [0] * n
-    for rank, idx in enumerate(order):
-        weights[idx] = n - rank
-    return weights
 
 
 def _extract_waypoints_from_solution(solution, start, end):
@@ -276,7 +254,6 @@ def _random_waypoints(parsed_data, start, end, max_extra_total=8):
             chosen_set.add(p)
             counts[t_id] += 1
 
-    
     remaining = [p for p in attraction_positions if p not in chosen_set and p not in (start, end)]
     if remaining:
         extra_cap = min(max_extra_total, len(remaining))
@@ -392,14 +369,28 @@ def _mutate_waypoints(parsed_data, solution, start, end, evaluate_path_fn, max_a
     return None
 
 
-def generate_abc_population(
+def _best_solution(population):
+    return max(
+        population,
+        key=lambda s: (
+            s["total_value"],
+            -s["total_time"],
+            -s["movement_time"],
+            -s["attraction_cost"],
+        ),
+    )
+
+
+def generate_bee_population(
     parsed_data,
     population_size=50,
     start=None,
     end=None,
     iterations=200,
-    limit=60,
-    onlookers=None,
+    recruitment_probability=0.6,
+    scout_ratio=0.1,
+    dance_quality_threshold=50,
+    abandon_patience=30,
     seed=None,
     deduplicate=True,
     *,
@@ -407,20 +398,13 @@ def generate_abc_population(
     on_iteration: Optional[Callable[[int, dict, list, list], None]] = None,
     should_stop: Optional[Callable[[], bool]] = None,
 ):
-    """Generuje populację rozwiązań metodą ABC.
-
-    Wymaga przekazania:
-    - evaluate_path_fn(path, parsed_data) -> dict
-    """
+    """Generuje populacje rozwiazan metoda Bee Algorithm (taniec pszczol)."""
     rows = parsed_data["rows"]
     cols = parsed_data["cols"]
     start, end = _default_start_end(rows, cols, start, end)
 
     if seed is not None:
         random.seed(seed)
-
-    if onlookers is None:
-        onlookers = population_size
 
     population = []
     history = []
@@ -445,8 +429,8 @@ def generate_abc_population(
 
     if len(population) < population_size:
         raise RuntimeError(
-            "ABC: nie udało się zainicjalizować populacji dopuszczalnych rozwiązań. "
-            "Rozważ poluzowanie ograniczeń albo zmniejszenie population_size."
+            "Bee: nie udalo sie zainicjalizowac populacji dopuszczalnych rozwiazan. "
+            "Rozwaz poluzowanie ograniczen albo zmniejszenie population_size."
         )
 
     best_so_far = None
@@ -455,9 +439,25 @@ def generate_abc_population(
         if should_stop is not None and should_stop():
             break
 
-        for i in range(population_size):
+        best = _best_solution(population)
+        if _solution_is_better(best, best_so_far):
+            best_so_far = best
+        best_value = best_so_far["total_value"]
+        threshold_value = best_value * (float(dance_quality_threshold) / 100.0)
+        eligible_indices = [
+            i for i, sol in enumerate(population)
+            if sol["total_value"] >= threshold_value
+        ]
+        if not eligible_indices:
+            eligible_indices = [population.index(best)]
+
+        eligible_weights = [max(1.0, float(population[i]["total_value"]) + 1.0) for i in eligible_indices]
+        n_foragers = max(1, int(population_size * recruitment_probability))
+
+        for _ in range(n_foragers):
             if should_stop is not None and should_stop():
                 break
+            i = random.choices(eligible_indices, weights=eligible_weights, k=1)[0]
             cand = _mutate_waypoints(parsed_data, population[i], start, end, evaluate_path_fn)
             if cand is not None and _solution_is_better(cand, population[i]):
                 cand["id"] = population[i]["id"]
@@ -468,18 +468,21 @@ def generate_abc_population(
         if should_stop is not None and should_stop():
             break
 
-        weights = _rank_weights(population)
-        indices = list(range(population_size))
-        for _k in range(onlookers):
+        n_scouts = max(1, int(population_size * scout_ratio))
+        scout_candidates = sorted(
+            range(population_size),
+            key=lambda i: population[i].get("trial", 0),
+            reverse=True,
+        )
+        for i in scout_candidates[:n_scouts]:
             if should_stop is not None and should_stop():
                 break
-            i = random.choices(indices, weights=weights, k=1)[0]
-            cand = _mutate_waypoints(parsed_data, population[i], start, end, evaluate_path_fn)
-            if cand is not None and _solution_is_better(cand, population[i]):
-                cand["id"] = population[i]["id"]
-                population[i] = cand
-            else:
-                population[i]["trial"] = population[i].get("trial", 0) + 1
+            repl = _random_feasible_solution(parsed_data, start, end, evaluate_path_fn)
+            if repl is None:
+                population[i]["trial"] = 0
+                continue
+            repl["id"] = population[i]["id"]
+            population[i] = repl
 
         if should_stop is not None and should_stop():
             break
@@ -487,7 +490,7 @@ def generate_abc_population(
         for i in range(population_size):
             if should_stop is not None and should_stop():
                 break
-            if population[i].get("trial", 0) < limit:
+            if population[i].get("trial", 0) < abandon_patience:
                 continue
             repl = _random_feasible_solution(parsed_data, start, end, evaluate_path_fn)
             if repl is None:
@@ -499,15 +502,7 @@ def generate_abc_population(
         if should_stop is not None and should_stop():
             break
 
-        best = max(
-            population,
-            key=lambda s: (
-                s["total_value"],
-                -s["total_time"],
-                -s["movement_time"],
-                -s["attraction_cost"]
-            )
-        )
+        best = _best_solution(population)
         if _solution_is_better(best, best_so_far):
             best_so_far = best
 
@@ -527,15 +522,7 @@ def generate_abc_population(
         sol["id"] = sol.get("id", i)
 
     if best_so_far is None:
-        best_so_far = max(
-            population,
-            key=lambda s: (
-                s["total_value"],
-                -s["total_time"],
-                -s["movement_time"],
-                -s["attraction_cost"]
-            )
-        )
+        best_so_far = _best_solution(population)
 
     return {
         "population": population,
