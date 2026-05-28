@@ -1,0 +1,228 @@
+\section{Opis zagadnienia}
+\label{sec:zagadnienie}
+
+\subsection{Sformułowanie problemu}
+\label{sec:problem}
+
+Środowisko modelowane jest jako siatka, gdzie każde pole reprezentuje
+fragment terenu o~określonym koszcie przejścia.
+
+\begin{itemize}
+    \item Każde pole posiada wagę określającą trudność terenu.
+    \item Koszt przejścia zależy od~kierunku ruchu:
+    \begin{itemize}
+        \item ruch prosty (poziomy/pionowy): mnożnik $1$,
+        \item ruch po~skosie (diagonalny): mnożnik $1{,}4$.
+    \end{itemize}
+\end{itemize}
+
+Na planszy rozmieszczone są \textbf{atrakcje turystyczne}:
+\begin{itemize}
+    \item każda atrakcja ma wartość turystyczną,
+    \item każda atrakcja ma koszt odwiedzenia (np.\ cena biletu),
+    \item każda atrakcja należy do~określonego \emph{typu} (zabytek,
+          przyroda, restauracja itp.).
+\end{itemize}
+
+\textbf{Podróżnik:}
+\begin{itemize}
+    \item startuje w~punkcie $s$,
+    \item kończy w~punkcie $t$,
+    \item posiada ograniczony czas $T$ oraz budżet $B$.
+\end{itemize}
+
+\textbf{Dodatkowe wymagania konstrukcyjne:}
+\begin{itemize}
+    \item każdego przejścia (krawędzi w~siatce) można użyć tylko raz,
+    \item każda atrakcja może być odwiedzona maksymalnie raz,
+    \item dla każdego typu atrakcji zdefiniowane są limity dolny $l_{\tau}$
+          i~górny $u_{\tau}$ na liczbę atrakcji tego typu w~trasie.
+\end{itemize}
+
+Problem stanowi rozszerzenie klasycznego zagadnienia znajdowania ścieżki
+o~elementy decyzyjne związane z~wyborem punktów pośrednich --- bliski
+\emph{Orienteering Problem} z~ograniczeniami typowymi.
+
+\subsection{Model matematyczny}
+\label{sec:model}
+
+\subsubsection{Definicja grafu}
+
+Problem reprezentowany jest jako graf:
+\[
+G = (V, E)
+\]
+gdzie:
+\begin{itemize}
+    \item $V$ --- zbiór pól siatki,
+    \item $E$ --- możliwe przejścia (krawędzie) między polami sąsiadującymi
+          w~siatce 8-kierunkowej (sąsiedztwo Moore'a).
+\end{itemize}
+
+\subsubsection{Koszt przejścia}
+
+Koszt przejścia pomiędzy polami:
+\[
+c_{ij} = w_i \cdot d_{ij}
+\]
+gdzie:
+\begin{itemize}
+    \item $w_i$ --- waga pola $i$,
+    \item $d_{ij} \in \{1,\ 1{,}4\}$ --- współczynnik kierunku ruchu
+          ($1$ dla ruchu osiowego, $1{,}4$ dla diagonalnego).
+\end{itemize}
+
+\subsubsection{Atrakcje}
+
+Niech:
+\begin{itemize}
+    \item $A \subseteq V$ --- zbiór atrakcji,
+    \item $v_i$ --- wartość atrakcji $i$,
+    \item $p_i$ --- koszt (cena) atrakcji $i$,
+    \item $\tau_i \in \mathcal{T}$ --- typ atrakcji $i$.
+\end{itemize}
+
+\subsubsection{Typy atrakcji}
+
+Niech $\mathcal{T}$ oznacza zbiór wszystkich typów atrakcji. Każdemu
+typowi $\tau \in \mathcal{T}$ przypisane są następujące parametry:
+\begin{itemize}
+    \item $t_{\tau}$ --- czas potrzebny na zwiedzenie atrakcji typu $\tau$,
+    \item $l_{\tau}$ --- minimalna liczba atrakcji typu $\tau$, które
+          należy odwiedzić,
+    \item $u_{\tau}$ --- maksymalna liczba atrakcji typu $\tau$, które
+          można odwiedzić.
+\end{itemize}
+
+\subsubsection{Zmienne decyzyjne}
+
+\[
+x_{ij} =
+\begin{cases}
+1 & \text{jeśli przechodzimy z } i \text{ do } j, \\
+0 & \text{w przeciwnym razie,}
+\end{cases}
+\qquad
+y_i =
+\begin{cases}
+1 & \text{jeśli odwiedzamy atrakcję } i, \\
+0 & \text{w przeciwnym razie.}
+\end{cases}
+\]
+
+\subsubsection{Funkcja celu}
+
+Celem jest maksymalizacja wartości odwiedzonych atrakcji:
+\begin{equation}
+\max \;\; \sum_{i \in A} v_i \cdot y_i .
+\label{eq:obj}
+\end{equation}
+
+\subsubsection{Ograniczenia}
+
+\textbf{1.\ Start:}
+\begin{equation}
+\sum_{j} x_{s j} = 1 .
+\label{eq:start}
+\end{equation}
+
+\textbf{2.\ Koniec:}
+\begin{equation}
+\sum_{i} x_{i t} = 1 .
+\label{eq:end}
+\end{equation}
+
+\textbf{3.\ Zachowanie przepływu:}
+\begin{equation}
+\sum_{i} x_{i k} = \sum_{j} x_{k j}
+\quad \forall k \in V \setminus \{s, t\} .
+\label{eq:flow}
+\end{equation}
+
+\textbf{4.\ Ograniczenie czasu:}
+\begin{equation}
+\sum_{(i,j) \in E} c_{ij} \cdot x_{ij}
++ \sum_{i \in A} y_i \cdot t_{\tau_i}
+\;\le\; T .
+\label{eq:time}
+\end{equation}
+
+\textbf{5.\ Ograniczenie budżetu:}
+\begin{equation}
+\sum_{i \in A} p_i \cdot y_i \;\le\; B .
+\label{eq:budget}
+\end{equation}
+
+\textbf{6.\ Ograniczenia ilościowe na typy atrakcji:}
+\begin{equation}
+l_{\tau} \;\le\; \sum_{\substack{i \in A \\ \tau_i = \tau}} y_i \;\le\; u_{\tau}
+\quad \forall \tau \in \mathcal{T} .
+\label{eq:types}
+\end{equation}
+
+\textbf{7.\ Powiązanie atrakcji ze~ścieżką.}
+Atrakcja może być odwiedzona tylko wtedy, gdy ścieżka przez nią przechodzi:
+\begin{equation}
+y_i \;\le\; \sum_{j} x_{j i} \quad \forall i \in A .
+\label{eq:link}
+\end{equation}
+
+\textbf{8.\ Jednokrotność użycia krawędzi i odwiedzin atrakcji:}
+\begin{align}
+& x_{ij} + x_{ji} \le 1 \quad \forall (i,j) \in E
+   && \text{(krawędź nieskierowana użyta co najwyżej raz)} \label{eq:edge-unique}\\
+& y_i \le 1 \quad \forall i \in A
+   && \text{(atrakcja odwiedzona co najwyżej raz)} \label{eq:attr-unique}
+\end{align}
+
+\textbf{9.\ Binarność:}
+\begin{equation}
+x_{ij} \in \{0, 1\}, \quad y_i \in \{0, 1\} .
+\label{eq:bin}
+\end{equation}
+
+Równania \eqref{eq:obj}--\eqref{eq:bin} formalnie definiują problem
+optymalizacji jako mieszany model przepływu w~grafie z~elementami doboru
+podzbioru (klasy \emph{Orienteering Problem} z~ograniczeniami typowymi
+i~zakazem powtórzeń krawędzi).
+
+\subsection{Uwagi modelowe i decyzje projektowe}
+
+\begin{itemize}
+    \item \textbf{Złożoność.} Problem jest NP-trudny (zawiera w~sobie
+          uogólnione \emph{Orienteering Problem}), co uzasadnia
+          zastosowanie metod heurystycznych i~meta-heurystycznych
+          --- w~tym projekcie algorytmu \emph{Artificial Bee Colony}
+          (patrz~rozdział \ref{sec:algorytmy}).
+    \item \textbf{Ścieżka jako konstrukcja pomocnicza.} W~implementacji
+          fragmenty trasy pomiędzy waypointami (start, kolejne atrakcje,
+          koniec) generowane są algorytmem A\textsuperscript{*}
+          (najtańsza ścieżka, koszt zgodny z~$c_{ij}$, sąsiedztwo
+          8-kierunkowe). Algorytm uwzględnia dynamiczne zakazy: blokowane
+          są pola atrakcji niezaplanowanych w~bieżącej liście waypointów,
+          a~także krawędzie wcześniej zużyte (twardy zakaz powtórzeń krawędzi,
+          \eqref{eq:edge-unique}).
+    \item \textbf{Atrakcje są blokujące.} W~implementacji pole atrakcji,
+          której nie planujemy odwiedzić, jest blokowane dla ścieżki ---
+          jeśli komórka atrakcji znajdzie się na trasie, atrakcja zostanie
+          ,,zaliczona''. Wymusza to spójność: trasa nie biegnie tranzytem
+          przez atrakcje, których nie zamierzaliśmy odwiedzić.
+    \item \textbf{Kara vs.\ dopuszczalność.} W~zaproponowanym podejściu nie
+          stosujemy funkcji kary za naruszenie ograniczeń: algorytm utrzymuje
+          jedynie rozwiązania w~pełni dopuszczalne (spełniające
+          \eqref{eq:start}--\eqref{eq:bin}), a~rozwiązania niedopuszczalne
+          są odrzucane już na etapie konstrukcji.
+    \item \textbf{Kryterium porównawcze.} Do porównywania rozwiązań
+          w~populacji ABC stosowana jest leksykograficzna krotka
+          \[
+              \big(\,
+                  \textstyle\sum v_i y_i,\;
+                  -(\text{czas trasy}),\;
+                  -(\text{koszt ruchu}),\;
+                  -(\text{koszt atrakcji})
+              \,\big),
+          \]
+          gdzie minus oznacza preferencję niższej wartości. Pozwala to przy
+          jednakowej wartości celu różnicować rozwiązania krótsze czasowo
+          i~tańsze, co ułatwia generowanie zróżnicowanej populacji.
+\end{itemize}

@@ -1,0 +1,182 @@
+% !TEX program = pdflatex
+% !TEX encoding = UTF-8
+%
+% Dokumentacja projektu — Badania Operacyjne (Informatyka 2025/2026)
+% Temat: Planer tras turystycznych z algorytmem ABC (Artificial Bee Colony)
+%
+% Kompilacja:
+%   pdflatex main.tex
+%   pdflatex main.tex   (drugi przebieg dla spisów i odnośników)
+%
+\documentclass[11pt,a4paper]{article}
+
+% ── Pakiety podstawowe ───────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[polish]{babel}
+\usepackage{lmodern}
+\usepackage{microtype}
+
+% ── Geometria i nagłówki ─────────────────────────────────────────────────────
+\usepackage[a4paper,margin=2.3cm]{geometry}
+\usepackage{fancyhdr}
+\setlength{\headheight}{14pt}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Badania Operacyjne 2025/2026}
+\fancyhead[R]{Planer tras turystycznych}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ── Matematyka, algorytmy, kod ───────────────────────────────────────────────
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{float}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\definecolor{codebg}{RGB}{248,248,248}
+\definecolor{codekw}{RGB}{0,90,160}
+\definecolor{codestr}{RGB}{160,80,0}
+\definecolor{codecom}{RGB}{90,120,90}
+
+\lstdefinelanguage{PythonExt}{
+    language=Python,
+    morekeywords={self,True,False,None,from,as,with,yield},
+}
+
+% Definicja jezyka JSON (listings nie ma jej w standardzie)
+\lstdefinelanguage{json}{
+    morestring=[b]",
+    morestring=[d]',
+    stringstyle=\color{codestr},
+    morekeywords={true,false,null},
+    sensitive=true,
+    comment=[l]{//},
+    commentstyle=\color{codecom}\itshape,
+    literate=
+        *{0}{{{\color{codekw}0}}}{1}
+         {1}{{{\color{codekw}1}}}{1}
+         {2}{{{\color{codekw}2}}}{1}
+         {3}{{{\color{codekw}3}}}{1}
+         {4}{{{\color{codekw}4}}}{1}
+         {5}{{{\color{codekw}5}}}{1}
+         {6}{{{\color{codekw}6}}}{1}
+         {7}{{{\color{codekw}7}}}{1}
+         {8}{{{\color{codekw}8}}}{1}
+         {9}{{{\color{codekw}9}}}{1}
+         {\{}{{{\color{codekw}{\{}}}}{1}
+         {\}}{{{\color{codekw}{\}}}}}{1}
+         {[}{{{\color{codekw}{[}}}}{1}
+         {]}{{{\color{codekw}{]}}}}{1},
+}
+
+\lstset{
+    backgroundcolor=\color{codebg},
+    basicstyle=\ttfamily\footnotesize,
+    keywordstyle=\color{codekw}\bfseries,
+    stringstyle=\color{codestr},
+    commentstyle=\color{codecom}\itshape,
+    breaklines=true,
+    breakatwhitespace=true,
+    showstringspaces=false,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    frame=single,
+    rulecolor=\color{gray!40},
+    captionpos=b,
+    tabsize=2,
+    columns=fullflexible,
+    inputencoding=utf8,
+    extendedchars=true,
+    literate=%
+        {ą}{{\k{a}}}1 {ę}{{\k{e}}}1 {ć}{{\'c}}1 {ł}{{\l{}}}1
+        {ń}{{\'n}}1 {ó}{{\'o}}1 {ś}{{\'s}}1 {ź}{{\'z}}1 {ż}{{\.z}}1
+        {Ą}{{\k{A}}}1 {Ę}{{\k{E}}}1 {Ć}{{\'C}}1 {Ł}{{\L{}}}1
+        {Ń}{{\'N}}1 {Ó}{{\'O}}1 {Ś}{{\'S}}1 {Ź}{{\'Z}}1 {Ż}{{\.Z}}1,
+}
+
+% ── Grafika, tabele, listy ───────────────────────────────────────────────────
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{enumitem}
+\setlist{itemsep=2pt,topsep=4pt}
+
+% ── Hiperłącza i odnośniki ───────────────────────────────────────────────────
+\usepackage[hidelinks,colorlinks=true,linkcolor=black,citecolor=black,urlcolor=blue!60!black]{hyperref}
+\usepackage{cleveref}
+
+% ── Polskie tłumaczenia środowiska algorithm/algpseudocode ───────────────────
+\floatname{algorithm}{Algorytm}
+\renewcommand{\algorithmicrequire}{\textbf{Wejście:}}
+\renewcommand{\algorithmicensure}{\textbf{Wyjście:}}
+\renewcommand{\algorithmicwhile}{\textbf{dopóki}}
+\renewcommand{\algorithmicdo}{\textbf{wykonuj}}
+\renewcommand{\algorithmicend}{\textbf{koniec}}
+\renewcommand{\algorithmicfor}{\textbf{dla}}
+\renewcommand{\algorithmicforall}{\textbf{dla każdego}}
+\renewcommand{\algorithmicif}{\textbf{jeżeli}}
+\renewcommand{\algorithmicthen}{\textbf{wtedy}}
+\renewcommand{\algorithmicelse}{\textbf{w przeciwnym razie}}
+\renewcommand{\algorithmicreturn}{\textbf{zwróć}}
+
+% ── Skróty notacyjne ─────────────────────────────────────────────────────────
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\title{
+    \vspace{-1.5cm}
+    \textbf{Badania Operacyjne} \\[2pt]
+    \large Informatyka 2025/2026 \\[18pt]
+    \textbf{Planer tras turystycznych --- optymalizacja trasy} \\[6pt]
+    \large z wykorzystaniem algorytmu \emph{Artificial Bee Colony}
+}
+\author{
+    \textbf{Skład zespołu:} \\[4pt]
+    \begin{tabular}{l}
+        Bartosz Tokarz \\
+        Adrian Michalski \\
+        Mikołaj Kaleta \\
+    \end{tabular}
+}
+\date{\today}
+
+% ═════════════════════════════════════════════════════════════════════════════
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+
+\begin{abstract}
+\noindent
+Projekt dotyczy zadania planowania trasy turystycznej na siatce komórek z~ważonymi
+przejściami, ograniczeniami budżetowymi, czasowymi oraz minimalną i~maksymalną liczbą
+atrakcji każdego typu. Dla wygenerowania populacji rozwiązań dopuszczalnych
+zaproponowano i~zaimplementowano algorytm \emph{Artificial Bee Colony} (ABC), w~którym
+rozwiązanie reprezentowane jest jako lista \emph{waypointów} (start, atrakcje
+w~kolejności, koniec) łączonych krokami A\textsuperscript{*} na siatce 8-kierunkowej
+z~twardym zakazem powtarzania krawędzi.
+\end{abstract}
+
+\vspace{0.4cm}
+\hrule
+\tableofcontents
+\hrule
+\vspace{0.6cm}
+
+% ═════════════════════════════════════════════════════════════════════════════
+\input{sekcje/01_wstep}
+\input{sekcje/02_opis_zagadnienia}
+\input{sekcje/03_opis_algorytmow}
+\input{sekcje/04_aplikacja}
+\input{sekcje/05_eksperymenty}
+\input{sekcje/06_podsumowanie}
+\input{sekcje/07_literatura}
+\input{sekcje/08_dodatek}
+
+\end{document}

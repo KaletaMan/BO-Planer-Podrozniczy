@@ -1,0 +1,97 @@
+\section{Eksperymenty}
+\label{sec:eksperymenty}
+
+W~bieżącej wersji projektu wdrożony jest mechanizm zbierania metryk
+populacji (\texttt{print\_population\_stats} w~\texttt{initial\_population.py})
+oraz walidator \texttt{examples/validate\_population.py}, co stanowi
+podstawę pod planowane eksperymenty. Pełna seria pomiarów porównawczych
+nie została jeszcze przeprowadzona --- w~tym rozdziale prezentujemy
+jedynie zarys planu eksperymentalnego oraz dane, jakie są możliwe do
+uzyskania z~aktualnego kodu.
+
+\subsection{Plan eksperymentalny}
+
+\paragraph{Zmienne niezależne.}
+\begin{itemize}
+    \item Rozmiar mapy: $H \times W \in \{10\!\times\!10,\ 20\!\times\!20,\ 30\!\times\!30\}$.
+    \item Gęstość atrakcji: liczba atrakcji $\in \{4, 15, 30\}$.
+    \item Rozkład wag: \texttt{uniform} vs.\ \texttt{clusters}.
+    \item Parametry ABC: $N \in \{20, 50, 100\}$, $I \in \{50, 200, 500\}$,
+          $L \in \{30, 60, 100\}$, $O \in \{N/2, N, 2N\}$.
+    \item Ziarno losowości \texttt{seed} --- minimum 5 powtórzeń dla każdej
+          kombinacji.
+\end{itemize}
+
+\paragraph{Zmienne zależne (mierzone).}
+\begin{itemize}
+    \item Frakcja rozwiązań dopuszczalnych w~populacji końcowej.
+    \item Średnia, mediana i~maksimum \texttt{total\_value} w~populacji.
+    \item Średni \texttt{movement\_cost}, \texttt{total\_time}, \texttt{attraction\_cost}.
+    \item Średnia długość ścieżki (liczba pól).
+    \item Liczba unikalnych ścieżek (różnorodność populacji).
+    \item Czas wykonania (sekundy) jako funkcja $N$, $I$, $O$.
+\end{itemize}
+
+\paragraph{Hipotezy do weryfikacji.}
+\begin{enumerate}
+    \item Zwiększenie $I$ (liczby iteracji) podnosi medianę \texttt{total\_value},
+          ale z~malejącym przyrostem (krzywa nasycenia).
+    \item Faza onlookerów wzmacnia eksploatację --- wyższe $O$ przy stałym $I$
+          poprawia średnią wartość celu, ale zmniejsza różnorodność populacji.
+    \item Wyższy limit stagnacji $L$ zwiększa eksploatację kosztem
+          eksploracji; bardzo niskie $L$ powoduje nadmierne ,,resetowanie''
+          przez zwiadowców i~uniemożliwia dopracowanie rozwiązań.
+    \item Rozkład wag \texttt{clusters} (klastry niskokosztowe) daje wyższe
+          wartości \texttt{total\_value} w~tym samym budżecie czasu niż
+          \texttt{uniform}.
+\end{enumerate}
+
+\subsection{Porównanie z baselineami}
+
+W~kodzie dostępne są dwa proste algorytmy referencyjne:
+\texttt{solve\_random\_walk} i~\texttt{solve\_greedy\_attractions}
+(\texttt{src/path\_solver.py}). Porównawcza tabela ma postać:
+
+\begin{table}[H]
+\centering
+\caption{Szablon zestawienia wyników (do uzupełnienia).}
+\label{tab:results-template}
+\begin{tabular}{lcccc}
+\toprule
+Algorytm & \texttt{value} & \texttt{move\_cost} & \texttt{total\_time} & \texttt{feasible} \\
+\midrule
+Random Walk        & -- & -- & -- & -- \\
+Greedy attractions & -- & -- & -- & -- \\
+ABC (best in pop)  & -- & -- & -- & -- \\
+ABC (mean in pop)  & -- & -- & -- & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Zbieranie wyników}
+
+Aktualny stan kodu pozwala uzyskać następujące dane bez modyfikacji
+implementacji:
+
+\begin{itemize}
+    \item Surowe statystyki (\Cref{lst:stats} z~\Cref{sec:aplikacja}) ---
+          wypisywane na stdout po uruchomieniu \texttt{initial\_population.py}.
+    \item Plik \texttt{initial\_population.json} z~wszystkimi rozwiązaniami
+          --- pozwala policzyć dowolne dodatkowe statystyki ex post
+          (np.\ w~notatniku).
+    \item Wizualizację (\texttt{visualize\_paths.py}) dla wybranych \texttt{id}.
+\end{itemize}
+
+\subsection{Wyniki wstępne}
+
+Pełne wyniki eksperymentalne zostaną dołączone w~kolejnej wersji
+dokumentacji. Bieżąca implementacja przeszła testy poprawności:
+\begin{itemize}
+    \item Wszystkie wygenerowane rozwiązania w~populacji końcowej spełniają
+          wszystkie ograniczenia (\texttt{feasible=true}) --- co jest
+          gwarantowane konstrukcyjnie przez algorytm.
+    \item Walidator \texttt{validate\_population.py} potwierdza brak
+          powtórzeń krawędzi w~każdej trasie.
+    \item Wizualizacja prezentuje sensowne kształty tras (krzywe biegnące
+          przez atrakcje, omijające zablokowane atrakcje niezaplanowane).
+\end{itemize}
