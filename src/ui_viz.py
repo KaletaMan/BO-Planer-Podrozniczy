@@ -67,13 +67,26 @@ def plot_paths_comparison(
     return fig
 
 
-def plot_convergence(histories: Dict[str, List[float]], title: str = "Konwergencja") -> plt.Figure:
+def plot_convergence(histories: Dict[str, List[Any]], title: str = "Konwergencja") -> plt.Figure:
     fig, ax = plt.subplots(figsize=(9, 4))
+
     for i, (name, hist) in enumerate(histories.items()):
         color = _PATH_COLORS[i % len(_PATH_COLORS)]
-        ax.plot(hist, color=color, linewidth=2, label=name)
-    ax.set_xlabel("Iteracja / pokolenie")
-    ax.set_ylabel("Fitness (wartość)")
+
+        if not hist:
+            continue
+
+        if isinstance(hist[0], dict):
+            xs = [h.get("iteration", idx) for idx, h in enumerate(hist)]
+            ys = [h.get("best_value", 0) for h in hist]
+        else:
+            xs = list(range(len(hist)))
+            ys = hist
+
+        ax.plot(xs, ys, color=color, linewidth=2, label=name)
+
+    ax.set_xlabel("Iteracja")
+    ax.set_ylabel("Najlepsza wartość")
     ax.set_title(title)
     ax.legend(fontsize=9)
     fig.tight_layout()

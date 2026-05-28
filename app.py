@@ -260,6 +260,39 @@ if mode == "Edytor / Generator":
         st.caption("Wybierz metodę i uruchom. Wynik zostanie narysowany na mapie.")
 
         algo = st.radio("Algorytm", ["Greedy (zachłanny)", "Random walk", "ABC"], horizontal=True)
+        if algo == "ABC":
+            st.markdown("### Parametry ABC")
+
+            c1, c2, c3 = st.columns(3)
+
+            abc_population = c1.number_input(
+                "Population size",
+                min_value=5,
+                max_value=500,
+                value=30,
+                step=5
+            )
+
+            abc_iterations = c2.number_input(
+                "Iterations",
+                min_value=10,
+                max_value=5000,
+                value=500,
+                step=50
+            )
+
+            abc_limit = c3.number_input(
+                "Scout limit",
+                min_value=1,
+                max_value=500,
+                value=30,
+                step=5
+            )
+
+        else:
+            abc_population = 30
+            abc_iterations = 500
+            abc_limit = 30
 
         run_btn = st.button("Uruchom ▶", type="primary")
 
@@ -287,8 +320,9 @@ if mode == "Edytor / Generator":
                     st.session_state.abc_cancel_requested = False
                     st.session_state.abc_partial = None
                     st.session_state.abc_running = True
-
-                    abc_iterations = 500
+                    st.session_state.abc_global_best = None
+                    st.session_state.abc_global_best_path = None
+                    st.session_state.abc_global_best_iteration = None
 
                     redraw_every = 5
 
@@ -307,7 +341,33 @@ if mode == "Edytor / Generator":
                         it = payload["iteration"]
                         hist = payload["history"]
                         best = payload["best"]
-                        top_paths = payload.get("top_paths") or [payload["best_path"]]
+
+                        global_best = st.session_state.get("abc_global_best")
+
+                        if global_best is None or best.get("total_value", 0) > global_best.get("total_value", 0):
+                            st.session_state.abc_global_best = best
+                            st.session_state.abc_global_best_path = payload["best_path"]
+                            st.session_state.abc_global_best_iteration = payload["iteration"]
+
+                        current_top_paths = payload.get("top_paths") or [payload["best_path"]]
+
+                        current_best_path = current_top_paths[0] if len(current_top_paths) > 0 else payload["best_path"]
+                        current_second_path = current_top_paths[1] if len(current_top_paths) > 1 else None
+
+                        global_best_path = st.session_state.get("abc_global_best_path")
+
+                        if global_best_path is None:
+                            global_best_path = payload["best_path"]
+                            st.session_state.abc_global_best_path = global_best_path
+
+                        paths_dict = {
+                            "Najlepsza w tej iteracji": current_best_path,
+                        }
+
+                        if current_second_path is not None:
+                            paths_dict["Druga najlepsza w tej iteracji"] = current_second_path
+
+                        paths_dict["Najlepsza globalnie"] = global_best_path
 
                         progress.progress(int(min(100, round(100 * it / max(1, abc_iterations)))))
                         status.write(
@@ -318,7 +378,6 @@ if mode == "Edytor / Generator":
 
                         should_redraw = (it % redraw_every == 0) or (it == abc_iterations) or st.session_state.get("abc_cancel_requested", False)
                         if should_redraw:
-                            paths_dict = {f"Best #{i+1}": p for i, p in enumerate(top_paths)}
                             fig = plot_paths_comparison(
                                 st.session_state.map_data,
                                 paths_dict,
@@ -346,7 +405,16 @@ if mode == "Edytor / Generator":
 
                             if hist:
                                 df = _pd.DataFrame(hist)
-                                chart_placeholder.line_chart(df, x="iteration", y="best_value")
+                                chart_df = df.rename(columns={
+                                    "iteration": "Iteracja",
+                                    "best_value": "Najlepsza wartość",
+                                })
+
+                                chart_placeholder.line_chart(
+                                    chart_df,
+                                    x="Iteracja",
+                                    y="Najlepsza wartość"
+                                )
 
                         # Persist best-so-far so an interrupted run still leaves a usable result.
                         st.session_state.last_path = payload["best_path"]
@@ -356,9 +424,9 @@ if mode == "Edytor / Generator":
 
                     abc_result = solve_abc_ui(
                         st.session_state.map_data,
-                        population_size=30,
-                        iterations=abc_iterations,
-                        limit=30,
+                        population_size=int(abc_population),
+                        iterations=int(abc_iterations),
+                        limit=int(abc_limit),
                         seed=int(st.session_state.map_data.get("seed", 0)),
                         on_iteration=_on_iter,
                         should_stop=lambda: st.session_state.get("abc_cancel_requested", False),
@@ -370,9 +438,25 @@ if mode == "Edytor / Generator":
                     path = abc_result["path"]
                     ev = evaluate_path(st.session_state.map_data, path)
                     st.session_state.last_history = abc_result["history"]
+                    best_iteration = st.session_state.get(
+                        "abc_global_best_iteration"
+                    )
 
                 st.session_state.last_path = path
                 st.session_state.last_eval = ev
+
+                st.session_state.last_result = {
+                    "algo": algo,
+                    "path": path,
+                    "history": st.session_state.get("last_history", []),
+
+                    "fitness": ev.get("value_collected", 0),
+
+                    "best_iteration": best_iteration,
+
+                    "evaluation": ev,
+                }
+
                 st.rerun()
 
         if st.session_state.last_eval:
@@ -392,11 +476,24 @@ if mode == "Edytor / Generator":
 
                 df = pd.DataFrame(st.session_state.last_history)
 
+                chart_df = df.rename(columns={
+                    "iteration": "Iteracja",
+                    "best_value": "Najlepsza wartość",
+                })
+
                 st.line_chart(
-                    df,
-                    x="iteration",
-                    y="best_value"
+                    chart_df,
+                    x="Iteracja",
+                    y="Najlepsza wartość"
                 )
+
+                best_iter = st.session_state.get("abc_global_best_iteration")
+
+                if best_iter is not None:
+                    st.info(
+                        f"Najlepsze rozwiązanie znaleziono w iteracji: {best_iter}"
+                    )
+
             if ev["feasible"]:
                 st.success("Ścieżka spełnia ograniczenia (czas + budżet).")
             else:
@@ -407,6 +504,33 @@ if mode == "Edytor / Generator":
                 st.session_state.last_eval = None
                 st.session_state.last_history = None
                 st.rerun()
+
+    st.subheader("Zapis wyniku")
+
+    result_name = st.text_input(
+        "Nazwa pliku wyniku",
+        value=f"wynik_{st.session_state.map_data.get('name', 'mapa')}".replace(" ", "_"),
+    )
+
+    if st.button("Zapisz wynik", disabled=not result_name.strip()):
+        RESULTS_DIR.mkdir(exist_ok=True)
+
+        result_data = {
+            "map_name": st.session_state.map_data.get("name", "Mapa"),
+            "map_data": st.session_state.map_data,
+            "runs": [
+                st.session_state.last_result
+            ],
+        }
+
+        path_to_save = RESULTS_DIR / f"{result_name.strip()}.json"
+
+        path_to_save.write_text(
+            json.dumps(result_data, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+
+        st.success(f"Zapisano wynik: {path_to_save.name}")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -439,8 +563,12 @@ else:
         st.stop()
 
     # Load map referenced in results
+    if "map_data" in res_data:
+        map_data = res_data["map_data"]
+    else:
+        map_data = None
+
     map_file = res_data.get("map_file", "")
-    map_data = None
     if map_file:
         p = Path(map_file)
         if not p.is_absolute():
@@ -490,10 +618,33 @@ else:
             rows.append({
                 "Algorytm": r.get("algo", "?"),
                 "Fitness": r.get("fitness", "—"),
-                "Koszt": ev.get("cost", "—"),
+
                 "Wartość": ev.get("value_collected", "—"),
-                "Atrakcje": len(ev.get("attractions_visited", [])),
+
+                "Czas": round(
+                    float(ev.get("movement_time", ev.get("cost", 0))),
+                    2
+                ),
+
+                "Limit czasu": map_data.get("time_limit", "—"),
+
+                "Koszt atrakcji": round(
+                    float(ev.get("attraction_cost", 0)),
+                    2
+                ),
+
+                "Budżet": map_data.get("budget", "—"),
+
+                "Atrakcje": len(
+                    ev.get("attractions_visited", [])
+                ),
+
                 "Długość ścieżki": len(path),
-                "Feasible": ev.get("feasible", "—"),
+
+                "Iteracja znalezienia":
+                    r.get("best_iteration", "—"),
+
+                "Feasible":
+                    "✓" if ev.get("feasible") else "✗",
             })
         st.dataframe(pd.DataFrame(rows), use_container_width=True)
