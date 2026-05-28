@@ -1,0 +1,351 @@
+\section{Opis algorytmów}
+\label{sec:algorytmy}
+
+W~ramach projektu rozważano i~częściowo zaimplementowano kilka podejść do
+generowania trasy. Główną meta-heurystyką, która została w~pełni zaimplementowana
+i~służy do generowania populacji rozwiązań dopuszczalnych, jest \emph{Artificial
+Bee Colony} (ABC). Dodatkowo, jako prosty baseline porównawczy i~mechanizm
+testowania interfejsu, zaimplementowano dwie pomocnicze procedury:
+\emph{Random Walk} oraz \emph{Greedy attractions} (zachłanne dążenie do najbliższej
+atrakcji).
+
+\subsection{Artificial Bee Colony (ABC)}
+\label{sec:abc}
+
+ABC to populacyjna meta-heurystyka inspirowana zachowaniem pszczół. W~klasycznej
+formie wyróżnia trzy typy ,,pszczół'':
+\begin{itemize}
+    \item \textbf{Pszczoły zatrudnione} (\emph{employed bees}) --- przypisane
+          do konkretnych rozwiązań (źródeł pokarmu) i~modyfikujące je lokalnie.
+    \item \textbf{Obserwatorzy} (\emph{onlookers}) --- wybierają źródło
+          z~prawdopodobieństwem rosnącym z~jakością źródła i~również je modyfikują.
+    \item \textbf{Zwiadowcy} (\emph{scouts}) --- zastępują źródła, które od~zbyt
+          wielu prób (\emph{trial}) nie poprawiły się, nowymi losowymi rozwiązaniami.
+\end{itemize}
+
+Schemat iteracji ABC dla naszego problemu przedstawia~\Cref{alg:abc-overview}.
+
+\begin{algorithm}[H]
+\caption{Generowanie populacji metodą ABC (ogólny zarys)}
+\label{alg:abc-overview}
+\begin{algorithmic}[1]
+\Require dane wejściowe \texttt{parsed\_data}, rozmiar populacji $N$, liczba iteracji $I$, limit stagnacji $L$, liczba onlookerów $O$
+\Ensure populacja $\mathcal{P} = \{s_1, \dots, s_N\}$ rozwiązań dopuszczalnych
+\State $\mathcal{P} \gets \emptyset$
+\While{$|\mathcal{P}| < N$}
+    \State $s \gets$ \Call{LosoweRozwiazanieDopuszczalne}{}
+    \If{$s \ne \bot$ \textbf{i} $s$ nie jest duplikatem w~$\mathcal{P}$}
+        \State $\mathcal{P} \gets \mathcal{P} \cup \{s\}$
+    \EndIf
+\EndWhile
+\For{$it = 1, \dots, I$}
+    \For{$i = 1, \dots, N$} \Comment{Faza employed}
+        \State $s' \gets$ \Call{MutacjaWaypointow}{$\mathcal{P}_i$}
+        \If{$s' \ne \bot$ \textbf{i} $s' \succ \mathcal{P}_i$}
+            \State $\mathcal{P}_i \gets s'$;\ \  $\mathcal{P}_i.\text{trial} \gets 0$
+        \Else
+            \State $\mathcal{P}_i.\text{trial} \gets \mathcal{P}_i.\text{trial} + 1$
+        \EndIf
+    \EndFor
+    \State $w \gets$ \Call{WagiRankingowe}{$\mathcal{P}$}
+    \For{$k = 1, \dots, O$} \Comment{Faza onlooker}
+        \State $i \gets$ \Call{WylosujZWagami}{$w$}
+        \State $s' \gets$ \Call{MutacjaWaypointow}{$\mathcal{P}_i$}
+        \If{$s' \ne \bot$ \textbf{i} $s' \succ \mathcal{P}_i$}
+            \State $\mathcal{P}_i \gets s'$;\ \  $\mathcal{P}_i.\text{trial} \gets 0$
+        \Else
+            \State $\mathcal{P}_i.\text{trial} \gets \mathcal{P}_i.\text{trial} + 1$
+        \EndIf
+    \EndFor
+    \For{$i = 1, \dots, N$} \Comment{Faza scout}
+        \If{$\mathcal{P}_i.\text{trial} \ge L$}
+            \State $\mathcal{P}_i \gets$ \Call{LosoweRozwiazanieDopuszczalne}{}
+            \State $\mathcal{P}_i.\text{trial} \gets 0$
+        \EndIf
+    \EndFor
+\EndFor
+\State \Return $\mathcal{P}$
+\end{algorithmic}
+\end{algorithm}
+
+Relacja porządku $s' \succ s$ to leksykograficzne porównanie krotek:
+\[
+\big(\,\mathrm{Value}(s'),\ -\mathrm{Time}(s'),\ -\mathrm{Cost}_{\mathrm{ruch}}(s'),\ -\mathrm{Cost}_{\mathrm{atrakcji}}(s')\,\big)
+\;>\;
+\big(\,\mathrm{Value}(s),\ -\mathrm{Time}(s),\ -\mathrm{Cost}_{\mathrm{ruch}}(s),\ -\mathrm{Cost}_{\mathrm{atrakcji}}(s)\,\big).
+\]
+
+\subsubsection{Reprezentacja rozwiązania}
+\label{sec:repr}
+
+Rozwiązanie w~populacji jest dwupoziomowe:
+
+\begin{enumerate}
+    \item \textbf{Plan logiczny} --- lista \emph{waypointów}
+          $\mathbf{W} = \langle s, a_{i_1}, a_{i_2}, \dots, a_{i_k}, e \rangle$,
+          gdzie $s,e$ to punkty startu i~końca, a~$a_{i_j}$ to wybrane atrakcje
+          w~zaplanowanej kolejności odwiedzenia.
+    \item \textbf{Realizacja fizyczna} --- konkretna ścieżka komórek
+          $P = \langle p_0, p_1, \dots, p_L \rangle$, zbudowana z~planu
+          logicznego przez łączenie kolejnych waypointów najtańszą ścieżką
+          A\textsuperscript{*} z~uwzględnieniem zakazu używania już wykorzystanych
+          krawędzi i~niezaplanowanych komórek atrakcji.
+\end{enumerate}
+
+Każde rozwiązanie w~populacji przechowuje również:
+\begin{itemize}
+    \item \texttt{path} --- pełną listę komórek (lista par $(r,c)$),
+    \item \texttt{visited\_attractions} --- listę odwiedzonych atrakcji,
+    \item \texttt{movement\_cost}, \texttt{attraction\_cost}, \texttt{total\_time}, \texttt{total\_value},
+    \item \texttt{type\_counts} --- wektor liczności atrakcji każdego typu,
+    \item flagi dopuszczalności: \texttt{budget\_ok}, \texttt{time\_ok}, \texttt{type\_ok}, \texttt{feasible},
+    \item \texttt{trial} --- licznik nieudanych modyfikacji (na potrzeby zwiadowców),
+    \item \texttt{id}, \texttt{waypoints} --- identyfikator i~plan logiczny.
+\end{itemize}
+
+\subsubsection{Wygenerowanie populacji początkowej}
+\label{sec:init-pop}
+
+Populacja początkowa składa się z~$N$ losowych rozwiązań \textbf{dopuszczalnych}.
+Procedura konstrukcji pojedynczego rozwiązania składa się z~dwóch kroków:
+
+\begin{enumerate}
+    \item Losowy wybór listy waypointów spełniający ograniczenia liczności
+          typów (\Cref{alg:random-waypoints}).
+    \item Materializacja ścieżki przez łączenie kolejnych waypointów
+          algorytmem A\textsuperscript{*} z~zakazem powtarzania krawędzi
+          i~komórek (\Cref{alg:build-path}). Jeżeli ścieżka się nie udaje
+          (np.\ nie ma fizycznej drogi spełniającej ograniczenia),
+          rozwiązanie jest odrzucane i~próbujemy następne.
+\end{enumerate}
+
+\begin{algorithm}[H]
+\caption{\textsc{LosoweWaypointy} --- losowanie planu atrakcji}
+\label{alg:random-waypoints}
+\begin{algorithmic}[1]
+\Require dane mapy, punkty $s, e$, parametr $E_{\max}$ (maksymalna liczba dodatkowych atrakcji)
+\Ensure lista waypointów $\mathbf{W}$ lub $\bot$ przy braku spełnienia minimów
+\State $\mathrm{chosen} \gets \emptyset$
+\ForAll{typ $t$}
+    \State $n_t \gets m_t -$ liczba atrakcji typu $t$ obecnych w~$\{s, e\}$
+    \If{$n_t > 0$}
+        \State wylosuj $n_t$ atrakcji typu $t$ spośród dostępnych
+        \If{kandydatów jest za mało} \State \Return $\bot$ \EndIf
+        \State dołącz wylosowane do $\mathrm{chosen}$
+    \EndIf
+\EndFor
+\State $E \gets \mathrm{rand}\!\left(0,\ \min(E_{\max},\ |\text{wolnych atrakcji}|)\right)$
+\For{$k = 1, \dots, E$}
+    \State wylosuj atrakcję $a$ z~prawdopodobieństwem ważonym
+           $\frac{v_a + 1}{\tau_{t_a} + 1}$
+    \If{$a \notin \mathrm{chosen}$ \textbf{i} dorzucenie nie łamie $M_{t_a}$}
+        \State $\mathrm{chosen} \gets \mathrm{chosen} \cup \{a\}$
+    \EndIf
+\EndFor
+\State pomieszaj kolejność $\mathrm{chosen}$
+\State \Return konkatenacja $\langle s \rangle$, $\mathrm{chosen}$, $\langle e \rangle$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{\textsc{BudujSciezkeZWaypointow} --- konstrukcja ścieżki fizycznej}
+\label{alg:build-path}
+\begin{algorithmic}[1]
+\Require mapa, waypointy $\mathbf{W} = \langle w_0, w_1, \dots, w_K \rangle$
+\Ensure ścieżka $P$ (lista komórek) lub $\bot$ jeśli nie istnieje
+\State $\mathrm{visited} \gets \{w_0\};\quad \mathrm{usedEdges} \gets \emptyset$
+\State $P \gets \langle w_0 \rangle$
+\For{$i = 0, \dots, K-1$}
+    \State $\text{blokady} \gets (\mathcal{A}\text{-pozycje} \setminus \{w_0, w_K, w_i, w_{i+1}\})\ \cup\ (\mathrm{visited} \setminus \{w_i, w_{i+1}\})$
+    \State $S \gets$ \Call{AStar}{$w_i, w_{i+1}$, blokady, $\mathrm{usedEdges}$}
+    \If{$S = \bot$} \Return $\bot$ \EndIf
+    \For{każda kolejna krawędź $(u,v)$ w~$S$}
+        \State $\mathrm{usedEdges} \gets \mathrm{usedEdges} \cup \{\{u,v\}\}$
+    \EndFor
+    \For{każdy kolejny węzeł $p$ w~$S$ poza pierwszym}
+        \If{$p \in \mathrm{visited}$} \Return $\bot$ \EndIf
+        \State $\mathrm{visited} \gets \mathrm{visited} \cup \{p\}$;\ \  dołącz $p$ do~$P$
+    \EndFor
+\EndFor
+\State \Return $P$
+\end{algorithmic}
+\end{algorithm}
+
+Procedura A\textsuperscript{*} jest standardowa --- używa heurystyki
+optymistycznej $h(p, g) = w_{\min} \cdot (1{,}4\cdot d_{\mathrm{diag}} +
+d_{\mathrm{ax}})$, gdzie $w_{\min}$ to minimalna waga na siatce,
+$d_{\mathrm{diag}}$ to liczba kroków diagonalnych, a~$d_{\mathrm{ax}}$ to
+liczba kroków osiowych w~ruchu Chebysheva. Zapewnia to dopuszczalność
+heurystyki i~optymalność znalezionej trasy w~sensie kosztu ruchu (przy
+zadanych blokadach komórek i~zakazach krawędzi).
+
+\subsubsection{Operatory modyfikacji rozwiązania (sąsiedztwo)}
+\label{sec:operators}
+
+Modyfikacja rozwiązania (\textsc{MutacjaWaypointow}) polega na zmianie
+listy waypointów, a~następnie próbie materializacji nowej ścieżki.
+Wybór operatora jest losowy z~rozkładem przedstawionym
+w~\Cref{tab:operators}. W~każdej próbie sprawdzane są ograniczenia
+liczności typów; jeżeli kandydat nie da się zmaterializować lub nie spełnia
+ograniczeń, próba kończy się fiaskiem.
+
+\begin{table}[H]
+\centering
+\caption{Operatory mutacji listy waypointów (sąsiedztwo).}
+\label{tab:operators}
+\begin{tabular}{p{3.3cm} c p{8.3cm}}
+\toprule
+\textbf{Operator} & \textbf{P} & \textbf{Opis} \\
+\midrule
+Dodaj atrakcję      & 0{,}30 & Wybierany kandydat $a \notin \mathbf{W}$
+                                ze zbioru 20 najlepiej rokujących wg
+                                $(v_a + 1) / (\tau_{t_a} + 1)$; wstawiany
+                                w~losowej pozycji, jeśli nie łamie $M_{t_a}$. \\
+Usuń atrakcję       & 0{,}25 & Losowo wybierany element $\mathbf{W}$, którego
+                                usunięcie nie złamie $m_{t}$. \\
+Zamień sąsiadujące  & 0{,}20 & Wybierane dwie pozycje w~$\mathbf{W}$
+                                i~zamieniane miejscami. \\
+2-opt (odwróć fragment) & 0{,}20 & Losowo wybierany fragment $[i, j]$
+                                i~odwracany. \\
+Przesuń atrakcję    & 0{,}05 & Wyjęcie pojedynczego elementu i~wstawienie
+                                w~innym miejscu (\emph{shift/relocate}). \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Selekcja typu onlooker (wagi rankingowe)}
+\label{sec:onlookers}
+
+W~fazie onlookerów wybór modyfikowanego źródła odbywa się na podstawie
+\emph{rangi} rozwiązania w~populacji (a~nie surowych wartości funkcji celu),
+co zapobiega dominacji jednego źródła. Procedura wag rankingowych jest
+następująca:
+
+\begin{enumerate}
+    \item Posortuj populację malejąco wg krotki porządkowej (patrz
+          \Cref{sec:abc}).
+    \item Rozwiązaniu o~randze $r$ (od~0) przypisz wagę $w_r = N - r$.
+    \item Losuj indeks źródła z~rozkładem proporcjonalnym do $w_r$.
+\end{enumerate}
+
+Liczba prób onlookerów w~iteracji wynosi $O$ (parametr; domyślnie
+$O = N$).
+
+\subsubsection{Faza zwiadowcza (scout)}
+\label{sec:scouts}
+
+Jeśli licznik nieudanych prób ($\mathrm{trial}$) dla rozwiązania przekroczy
+limit $L$, rozwiązanie jest zastępowane nowym losowym rozwiązaniem
+dopuszczalnym (\Cref{alg:random-waypoints} + \Cref{alg:build-path}). Po
+udanym zastąpieniu licznik prób się zeruje. Jeżeli nie udaje się
+wygenerować nowego rozwiązania w~zadanej liczbie prób, licznik również się
+zeruje, by nie zapętlać próby zastąpienia.
+
+\subsubsection{Pseudokod operatora mutacji}
+\label{sec:mutate-pseudo}
+
+\begin{algorithm}[H]
+\caption{\textsc{MutacjaWaypointow}}
+\label{alg:mutate}
+\begin{algorithmic}[1]
+\Require rozwiązanie $s$, $\mathrm{maxAttempts}$
+\Ensure rozwiązanie $s'$ (jeśli udało się znaleźć dopuszczalnego sąsiada) lub $\bot$
+\For{$j = 1, \dots, \mathrm{maxAttempts}$}
+    \State $\mathbf{W}' \gets s.\mathbf{W}$
+    \State $\rho \gets \mathrm{rand}(0, 1)$
+    \If{$\rho < 0{,}30$} \Comment{Dodaj}
+        \State dobierz kandydata $a$ ze zbioru top-20 wg $(v_a+1)/(\tau_{t_a}+1)$
+        \If{liczność typu $t_a$ po dodaniu $\le M_{t_a}$}
+            \State wstaw $a$ w~losowe miejsce $\mathbf{W}'$
+        \Else \State \textbf{continue}
+        \EndIf
+    \ElsIf{$\rho < 0{,}55$} \Comment{Usuń}
+        \State $R \gets$ pozycje, których usunięcie nie złamie $m_{t}$
+        \If{$R = \emptyset$} \textbf{continue} \EndIf
+        \State usuń element o~losowej pozycji z~$R$
+    \ElsIf{$\rho < 0{,}75$} \Comment{Zamień}
+        \If{$|\mathbf{W}'| < 2$} \textbf{continue} \EndIf
+        \State wylosuj $i, k$; zamień $\mathbf{W}'[i] \leftrightarrow \mathbf{W}'[k]$
+    \ElsIf{$\rho < 0{,}95$} \Comment{2-opt}
+        \If{$|\mathbf{W}'| < 4$} \textbf{continue} \EndIf
+        \State wylosuj $i \le k$; odwróć $\mathbf{W}'[i..k]$
+    \Else \Comment{Przesuń}
+        \If{$|\mathbf{W}'| < 2$} \textbf{continue} \EndIf
+        \State wylosuj $i$, $k$; przenieś $\mathbf{W}'[i]$ na pozycję $k$
+    \EndIf
+    \State $P \gets$ \Call{BudujSciezkeZWaypointow}{$\mathbf{W}'$}
+    \If{$P \ne \bot$ \textbf{i} ocena $P$ daje rozwiązanie dopuszczalne}
+        \State \Return rozwiązanie zbudowane z~$\mathbf{W}'$ i~$P$
+    \EndIf
+\EndFor
+\State \Return $\bot$
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Funkcja oceny ścieżki}
+\label{sec:eval}
+
+Funkcja \texttt{evaluate\_path} (plik \texttt{initial\_population.py}) liczy:
+\begin{itemize}
+    \item \texttt{movement\_cost} --- $\sum_{l} w_{p_l}\cdot\delta_l$,
+    \item \texttt{attraction\_cost} --- suma $k_i$ po unikalnych odwiedzonych atrakcjach,
+    \item \texttt{total\_time} --- $\texttt{movement\_cost} + \sum \tau_{t_i}$,
+    \item \texttt{total\_value} --- $\sum v_i$ po unikalnych odwiedzonych atrakcjach,
+    \item \texttt{type\_counts} --- wektor $\big[\sum_{i: t_i = t} \mathbb{1}_{a_i \in \mathcal{V}(P)}\big]_{t = 0, \dots, T-1}$,
+    \item flagi: \texttt{budget\_ok} ($\le B$), \texttt{time\_ok} ($\le T_{\max}$),
+          \texttt{type\_ok} ($m_t \le \cdot \le M_t$) i~\texttt{feasible} (koniunkcja).
+\end{itemize}
+
+Spójność z~modelem matematycznym jest zapewniona: zwracana krotka cech
+odpowiada wprost ograniczeniom \eqref{eq:budget}--\eqref{eq:types}.
+
+\subsection{Podejścia pomocnicze}
+\label{sec:baselines}
+
+W~kodzie znajdują się także uproszczone metody pomocnicze, używane głównie
+do testowania interfejsu wizualizacji w~aplikacji Streamlit.
+
+\subsubsection{Random Walk}
+
+Algorytm losowy spaceruje od~$s$ po sąsiedztwie 8-kierunkowym, dopóki nie
+zostanie wykorzystany budżet kosztu lub nie zostanie osiągnięty punkt $e$.
+Nie pilnuje ograniczeń typów, nie unika powtarzania komórek/krawędzi
+i~służy wyłącznie jako baseline. Implementacja: \texttt{src/path\_solver.py},
+funkcja \texttt{solve\_random\_walk}.
+
+\subsubsection{Greedy attractions}
+
+W~każdym kroku wybierana jest najbliższa (w~metryce Chebysheva) jeszcze
+nieodwiedzona atrakcja i~algorytm wykonuje kroki w~jej kierunku, dopóki
+budżet pozwala. Implementacja: \texttt{src/path\_solver.py}, funkcja
+\texttt{solve\_greedy\_attractions}. Także baseline.
+
+\subsection{Inne pomysły rozważane w~fazie projektowej}
+\label{sec:other-ideas}
+
+W~trakcie projektu rozważano kilka alternatywnych dróg, które nie weszły
+do finalnej implementacji:
+\begin{itemize}
+    \item \textbf{Algorytm genetyczny (GA)} --- z~populacją chromosomów
+          jako permutacji wybranych atrakcji; krzyżowania typu PMX/OX,
+          mutacje swap/insert/2-opt. Architektura aplikacji (\texttt{app.py})
+          zakłada możliwość podłączenia GA przez stabilny interfejs
+          \texttt{solve(map, params) → path}, więc rozszerzenie jest naturalne.
+    \item \textbf{Programowanie liniowe całkowitoliczbowe (ILP)} --- model
+          \eqref{eq:obj}--\eqref{eq:bin} można sprowadzić do mieszanej
+          formulacji ILP z~przepływami w~grafie siatki; rozważano użycie
+          solvera (np.\ CBC) do małych instancji jako wartość referencyjna.
+          Decyzja: pominięto ze względu na koszt implementacji i~ograniczoną
+          skalowalność.
+    \item \textbf{Symulowane wyżarzanie (SA)} --- jako pojedyncze-rozwiązaniowa
+          alternatywa, działająca na tej samej reprezentacji waypointów
+          i~tym samym zbiorze operatorów. Pomysł porzucono, ponieważ ABC
+          dawało już zadowalające wyniki, a~równoległa populacja jest
+          wartością samą w~sobie (np.\ do dalszego ranking-u/eksploracji).
+    \item \textbf{Ant Colony Optimization (ACO)} --- pomysł na klasycznej
+          stronie konstrukcji ścieżki, jednak nieoczywista adaptacja do
+          twardych ograniczeń typów; pominięto.
+\end{itemize}
+
+W~niniejszej dokumentacji szczegółowo opisany jest tylko algorytm ABC,
+gdyż tylko on doczekał się pełnej implementacji.

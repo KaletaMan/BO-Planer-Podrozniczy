@@ -1,0 +1,26 @@
+# Pliki pomocnicze LaTeX
+*.aux
+*.log
+*.toc
+*.out
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.bbl
+*.blg
+*.bcf
+*.run.xml
+*.nav
+*.snm
+*.vrb
+
+# Pliki tymczasowe edytorów
+*.swp
+*.bak
+*.tmp
+.~*
+
+# Wynik kompilacji (opcjonalnie — usuń jeśli chcesz commitować PDF)
+# main.pdf

@@ -1,0 +1,142 @@
+\section{Dodatek --- podział pracy}
+\label{sec:dodatek}
+
+\noindent
+Poniższa tabela prezentuje szczegółowy podział zadań w~projekcie wraz
+z~procentowym udziałem członków zespołu. Ze względu na charakter
+przedmiotu (Badania Operacyjne) podział został tak skonstruowany, aby
+każdy z~członków zespołu uczestniczył w~realnej pracy algorytmicznej
+w~porównywalnym wymiarze, przy czym \textbf{rdzeń metaheurystyki ABC}
+pozostaje głównym obszarem odpowiedzialności jednego autora.
+
+\begin{longtable}{p{4.4cm} p{5.6cm} p{4.4cm}}
+\toprule
+\textbf{Etap realizacji} & \textbf{Zakres pracy} & \textbf{Osoba / \% udział} \\
+\midrule
+\endfirsthead
+
+\toprule
+\textbf{Etap realizacji} & \textbf{Zakres pracy} & \textbf{Osoba / \% udział} \\
+\midrule
+\endhead
+
+Model matematyczny problemu
+& Formalizacja jako ILP: zmienne $x_{ij}, y_i$, funkcja celu,
+  ograniczenia~\eqref{eq:start}--\eqref{eq:bin}, ograniczenia
+  typowe~\eqref{eq:types}
+& Adrian 50\%, Mikołaj 30\%, \\[-2pt]
+& & Bartosz 20\% \\[4pt]
+
+Algorytm ABC --- rdzeń metaheurystyki
+& \texttt{abc\_algorithm.py}: faza employed / onlooker / scout, ruletka
+  selekcji proporcjonalnej, licznik prób, reset rozwiązań,
+  pętla główna i~kryterium stopu
+& \textbf{Bartosz 70\%}, \\[-2pt]
+& & Adrian 15\%, Mikołaj 15\% \\[4pt]
+
+Operatory zaburzeń
+& Operatory mutacji rozwiązania (add / remove / swap / 2-opt / shift)
+  wraz z~rozkładem prawdopodobieństw oraz mechanizm utrzymywania
+  dopuszczalności po~mutacji
+& \textbf{Bartosz 65\%}, \\[-2pt]
+& & Mikołaj 20\%, Adrian 15\% \\[4pt]
+
+A\textsuperscript{*} i konstrukcja ścieżek
+& Implementacja A\textsuperscript{*} na siatce 8-kierunkowej, twardy
+  zakaz powtarzania krawędzi, dynamiczne blokowanie atrakcji
+  spoza listy waypointów, sklejanie segmentów trasy
+& Adrian 55\%, Bartosz 30\%, \\[-2pt]
+& & Mikołaj 15\% \\[4pt]
+
+Funkcja ewaluacji
+& \texttt{evaluate\_path}: wartość trasy, koszt ruchu, koszt atrakcji,
+  czas; leksykograficzne kryterium porównawcze rozwiązań
+& Adrian 60\%, Bartosz 25\%, \\[-2pt]
+& & Mikołaj 15\% \\[4pt]
+
+Generator mapy
+& \texttt{map\_generator.py}, \texttt{src/map\_generator.py}:
+  procedualne generowanie wag terenu, rozmieszczanie atrakcji,
+  przypisanie typów, parametry rozkładu
+& \textbf{Mikołaj 65\%}, \\[-2pt]
+& & Adrian 20\%, Bartosz 15\% \\[4pt]
+
+Populacja początkowa
+& \texttt{initial\_population.py}: heurystyczna konstrukcja rozwiązań
+  dopuszczalnych, dobór punktów pośrednich z~uwzględnieniem
+  ograniczeń typowych, kontrola czasu/budżetu
+& Mikołaj 45\%, Bartosz 40\%, \\[-2pt]
+& & Adrian 15\% \\[4pt]
+
+Walidator ograniczeń
+& \texttt{examples/validate\_population.py}: sprawdzanie
+  spełnienia~\eqref{eq:start}--\eqref{eq:bin}, weryfikacja braku
+  powtórzeń krawędzi i~ograniczeń typowych
+& Adrian 65\%, Mikołaj 25\%, \\[-2pt]
+& & Bartosz 10\% \\[4pt]
+
+Parser i I/O
+& \texttt{parser.py}, \texttt{load\_json.py}: konwersja JSON $\leftrightarrow$
+  struktury wewnętrzne, walidacja schematu wejścia
+& Mikołaj 55\%, Adrian 35\%, \\[-2pt]
+& & Bartosz 10\% \\[4pt]
+
+Wizualizacja tras
+& \texttt{visualize\_paths.py}: rysowanie tras, atrakcji, punktów
+  start/end, kolorowanie typów, wykresy diagnostyczne
+& Mikołaj 70\%, Adrian 20\%, \\[-2pt]
+& & Bartosz 10\% \\[4pt]
+
+Aplikacja web (Streamlit)
+& \texttt{app.py}, \texttt{src/path\_solver.py}, \texttt{src/ui\_io.py},
+  \texttt{src/ui\_viz.py}: edytor mapy, generator, walidacja,
+  tryb wyników
+& Mikołaj 50\%, Adrian 35\%, \\[-2pt]
+& & Bartosz 15\% \\[4pt]
+
+Scenariusze testowe
+& \texttt{scenarios/small.json}, \texttt{scenarios/medium.json}:
+  parametry, dobór trudności, dane wejściowe do eksperymentów
+& Adrian 45\%, Mikołaj 35\%, \\[-2pt]
+& & Bartosz 20\% \\[4pt]
+
+Dokumentacja LaTeX
+& Niniejszy dokument: opis problemu, model matematyczny, opis
+  algorytmu, dokumentacja użytkownika, literatura
+& Adrian 40\%, Mikołaj 35\%, \\[-2pt]
+& & Bartosz 25\% \\
+
+\bottomrule
+\end{longtable}
+
+\subsection*{Sumaryczny rozkład wkładu}
+
+Po~zsumowaniu wkładów z~poszczególnych etapów (z~wagami proporcjonalnymi
+do nakładu pracy w~danym module) orientacyjny rozkład wkładu autorów
+w~całość projektu przedstawia się następująco:
+
+\begin{center}
+\begin{tabular}{l c}
+\toprule
+\textbf{Autor} & \textbf{Łączny wkład} \\
+\midrule
+Bartosz Tokarz   & $\approx$ 34\% \\
+Adrian Michalski & $\approx$ 34\% \\
+Mikołaj Kaleta   & $\approx$ 32\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent
+\textbf{Komentarz do podziału.}
+Bartosz Tokarz odpowiada za~rdzeń metaheurystyki ABC --- najbardziej
+wymagający koncepcyjnie i~obliczeniowo komponent projektu (główna
+pętla, operatory zaburzeń, mechanizm scout). Adrian Michalski skupia
+się na~komponentach algorytmicznych powiązanych ze~ścieżkami
+i~poprawnością rozwiązań: A\textsuperscript{*} z~ograniczeniami,
+funkcja ewaluacji, walidator i~formalizacja modelu matematycznego.
+Mikołaj Kaleta odpowiada za~algorytmikę po~stronie środowiska:
+procedualny generator mapy, konstrukcja populacji początkowej oraz
+warstwa wizualizacji i~I/O. Taki podział utrzymuje porównywalny wkład
+algorytmiczny wszystkich członków zespołu, przy jednoznacznym
+przypisaniu odpowiedzialności za~główny algorytm projektu.

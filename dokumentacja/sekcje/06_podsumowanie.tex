@@ -1,0 +1,76 @@
+\section{Podsumowanie}
+\label{sec:podsumowanie}
+
+\subsection{Wnioski}
+
+\begin{enumerate}
+    \item Postawiony problem łączy aspekty kombinatoryczne (wybór podzbioru
+          atrakcji z~ograniczeniami typów i~budżetów) z~grafowymi
+          (istnienie i~koszt fizycznej ścieżki na siatce 8-kierunkowej
+          z~zakazem powtórzeń krawędzi). Tradycyjne sformułowania
+          \emph{Orienteering Problem} stanowią dobrą inspirację, ale
+          twarde wymaganie braku powtórzeń krawędzi czyni nasz model
+          wyraźnie trudniejszym.
+    \item Dwupoziomowa reprezentacja rozwiązania (waypointy + materializacja
+          A\textsuperscript{*}) okazała się praktyczna --- pozwala
+          rozdzielić problem ,,co odwiedzić'' od~,,jak dojść''
+          i~drastycznie zawęża przestrzeń sąsiedztwa.
+    \item Algorytm ABC daje populację rozwiązań w~pełni dopuszczalnych,
+          co eliminuje konieczność funkcji kary i~upraszcza analizę.
+    \item Leksykograficzna krotka porządkowa
+          ($\mathrm{Value}\uparrow$, $\mathrm{Time}\downarrow$,
+          $\mathrm{Cost}_{\mathrm{ruch}}\downarrow$,
+          $\mathrm{Cost}_{\mathrm{atrakcji}}\downarrow$) jest tanim, ale
+          skutecznym kryterium różnicowania rozwiązań i~kierowania
+          eksploatacją.
+\end{enumerate}
+
+\subsection{Napotkane problemy}
+
+\begin{itemize}
+    \item \textbf{Trudność generacji rozwiązań dopuszczalnych.} W~instancjach
+          o~ciasnym budżecie czasowym lub bardzo dużej liczbie atrakcji
+          częstość uzyskiwania ścieżek dopuszczalnych przy losowych
+          waypointach jest mała --- konieczne jest podbicie liczby prób
+          (\texttt{max\_tries}) w~\texttt{\_random\_feasible\_solution}.
+    \item \textbf{Twardy zakaz powtórzeń krawędzi.} Wprowadzenie tego
+          ograniczenia powoduje, że pewne kombinacje waypointów po prostu
+          nie da się fizycznie zrealizować (segment domyka się dopiero
+          po długim ,,objeździe''); musi to być uwzględnione w~mutacjach
+          jako naturalny kanał odrzuceń.
+    \item \textbf{Koszt A\textsuperscript{*} przy każdej mutacji.}
+          Każda zaakceptowana mutacja oznacza materializację co najmniej
+          jednego segmentu ścieżki; przy populacji 50 i~200 iteracjach
+          koszt ten kumuluje się szybko --- optymalizacja A\textsuperscript{*}
+          (np.\ z~cachowaniem segmentów lub heurystyką niższej jakości,
+          ale szybszą) jest naturalnym kierunkiem przyspieszania.
+\end{itemize}
+
+\subsection{Kierunki rozwoju}
+
+\begin{enumerate}
+    \item \textbf{Pełna integracja ABC z~aplikacją Streamlit.}
+          Architektura \texttt{app.py} przewiduje stabilny interfejs
+          \texttt{solve(map, params) → path}; dorzucenie wrappera nad
+          \texttt{generate\_abc\_population} pozwoli porównywać ABC
+          z~baselineami w~UI.
+    \item \textbf{Drugi algorytm meta-heurystyczny.} GA / SA / Tabu Search
+          na tej samej reprezentacji waypointów (operatory już mamy)
+          dałyby porównanie wewnątrz tej samej klasy metod.
+    \item \textbf{Solver ILP referencyjny.} Dla małych instancji
+          (np.\ $10 \times 10$, 6--8 atrakcji) sformułowanie z~rozdziału
+          \ref{sec:model} można zlecić solverowi --- daje ,,prawdziwie
+          optymalną'' wartość celu i~pozwala obiektywnie ocenić jakość
+          ABC.
+    \item \textbf{Bardziej wyrafinowana funkcja oceny.} Wprowadzenie
+          metryki Pareto-typu (niezdominowana wartość vs.\ czas) zamiast
+          leksykografii, by jawnie zwracać front Pareto.
+    \item \textbf{Cache segmentów A\textsuperscript{*}.} Ponieważ ABC
+          modyfikuje pojedyncze pozycje waypointów, większość segmentów
+          ścieżki pozostaje niezmienna --- ich przeliczanie można
+          zaoszczędzić.
+    \item \textbf{Większa baza scenariuszy testowych.} Aktualnie dostępne
+          są dwa scenariusze webowe (\texttt{small.json},
+          \texttt{medium.json}); benchmark wymaga większej i~bardziej
+          zróżnicowanej kolekcji.
+\end{enumerate}

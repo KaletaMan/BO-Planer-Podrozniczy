@@ -1,0 +1,328 @@
+\section{Aplikacja --- dokumentacja użytkownika}
+\label{sec:aplikacja}
+
+Aplikacja jest zestawem narzędzi w~języku Python (3.10+), uruchamianych z~wiersza
+poleceń, oraz pomocniczej aplikacji webowej zbudowanej w~bibliotece Streamlit.
+Dwie ścieżki pracy uzupełniają się:
+
+\begin{itemize}
+    \item \textbf{Tryb CLI} --- generacja mapy, generacja populacji metodą ABC,
+          walidacja i~wizualizacja.
+    \item \textbf{Tryb web (Streamlit)} --- interaktywny edytor/generator mapy,
+          podgląd, prostsze algorytmy (greedy/random) i~moduł porównawczy wyników.
+\end{itemize}
+
+\subsection{Wymagania i instalacja}
+
+\paragraph{Wymagania:} Python $\ge 3.10$, biblioteki:
+\texttt{numpy}, \texttt{matplotlib}, \texttt{pandas}, \texttt{streamlit}.
+Pełna lista znajduje się w~pliku \texttt{requirements.txt}:
+
+\begin{lstlisting}[language=bash, caption={Zawartość pliku \texttt{requirements.txt}}]
+streamlit>=1.35.0
+pandas>=2.0.0
+matplotlib>=3.8
+numpy>=1.26
+\end{lstlisting}
+
+Instalacja w~środowisku wirtualnym:
+\begin{lstlisting}[language=bash]
+python -m venv .venv
+# Windows:
+.venv\Scripts\activate
+# Linux/Mac:
+source .venv/bin/activate
+
+pip install -r requirements.txt
+\end{lstlisting}
+
+\subsection{Charakterystyka danych}
+\label{sec:dane}
+
+\subsubsection{Format mapy --- CLI (\texttt{map.json})}
+
+Mapa generowana skryptem \texttt{map\_generator.py} zapisywana jest do pliku
+JSON. Schemat:
+
+\begin{lstlisting}[language=json, caption={Schemat \texttt{map.json}}]
+{
+  "weight": [[int, ...], ...],   // siatka H x W wag (int >= 1)
+  "time":    int,                // budzet czasu T_max
+  "budget":  int,                // budzet pieniezny B
+  "attractions": [
+    [row, col, value, cost, type],  // atrakcja: 5 intow
+    ...
+  ],
+  "attraction_types": [
+    [time, min, max],            // typ: (czas zwiedzania, min, max)
+    ...
+  ]
+}
+\end{lstlisting}
+
+\paragraph{Uwaga.} Atrakcje są listami pięciu intów; \texttt{type} to
+indeks (0-based) typu w~tablicy \texttt{attraction\_types}.
+
+\subsubsection{Format mapy --- aplikacja web (scenarios/*.json)}
+
+Aplikacja Streamlit posługuje się rozszerzonym formatem (m.in.\ z~nazwą,
+nazwami typów, polami startu/końca jako słowniki):
+
+\begin{lstlisting}[language=json, caption={Schemat \texttt{scenarios/*.json} (wycinek z \texttt{small.json})}]
+{
+  "name": "Small 8x8 - 4 atrakcje",
+  "width": 8, "height": 8,
+  "weights": [[3,2,4,...], ...],
+  "attractions": [
+    {"id": "a1", "x": 1, "y": 5, "value": 5, "type": "zabytek"},
+    ...
+  ],
+  "attraction_types": ["zabytek", "przyroda"],
+  "start": {"x": 0, "y": 0},
+  "end":   {"x": 7, "y": 7},
+  "budget": 30,
+  "seed": 7
+}
+\end{lstlisting}
+
+\subsubsection{Format populacji (\texttt{initial\_population.json})}
+
+\begin{lstlisting}[language=json]
+[
+  {
+    "id": 0,
+    "path": [[r, c], [r, c], ...],
+    "visited_attractions": [[r, c], ...],
+    "used_attractions":    [[r, c], ...],
+    "movement_cost": float,
+    "attraction_cost": int,
+    "total_time": float,
+    "total_value": int,
+    "type_counts": [int, ...],
+    "budget_ok": bool, "time_ok": bool, "type_ok": bool,
+    "feasible": bool
+  },
+  ...
+]
+\end{lstlisting}
+
+\subsection{Uruchamianie --- tryb CLI}
+
+\subsubsection{Krok 1. Wygenerowanie mapy}
+
+Skrypt \texttt{map\_generator.py} po uruchomieniu wprost generuje mapę
+$30 \times 30$ z~trzema typami atrakcji i~zapisuje wynik do \texttt{map.json}:
+
+\begin{lstlisting}[language=bash]
+python map_generator.py
+\end{lstlisting}
+
+Domyślne wartości (do edycji w~bloku \texttt{if \_\_name\_\_ == "\_\_main\_\_"}):
+\begin{itemize}
+    \item rozmiar: $30 \times 30$,
+    \item zakres wag pól: $[7, 12]$,
+    \item budżet czasowy: $800$, budżet pieniężny: $300$,
+    \item trzy typy atrakcji z~różnymi parametrami $(\tau, m, M)$
+          i~zakresami wartości oraz kosztów.
+\end{itemize}
+
+\subsubsection{Krok 2. Generowanie populacji metodą ABC}
+
+\begin{lstlisting}[language=bash]
+python initial_population.py \
+    --population-size 50 \
+    --iters 200 \
+    --limit 60 \
+    --out initial_population.json
+\end{lstlisting}
+
+\paragraph{Parametry skryptu:}
+\begin{description}[leftmargin=2.6cm,style=nextline]
+    \item[\texttt{-{}-map}] ścieżka do pliku mapy JSON (domyślnie \texttt{map.json}).
+    \item[\texttt{-{}-out}] plik wyjściowy populacji (domyślnie \texttt{initial\_population.json}).
+    \item[\texttt{-{}-population-size}] rozmiar populacji $N$ (domyślnie 50).
+    \item[\texttt{-{}-iters}] liczba iteracji ABC (domyślnie 200).
+    \item[\texttt{-{}-limit}] limit stagnacji $L$ uruchamiający fazę zwiadowczą (domyślnie 60).
+    \item[\texttt{-{}-onlookers}] liczba prób onlookerów na iterację (domyślnie $= N$).
+    \item[\texttt{-{}-seed}] ziarno generatora liczb losowych (opcjonalne).
+\end{description}
+
+\paragraph{Wyjście:} plik JSON z~populacją oraz wypisane na stdout
+statystyki populacji (\Cref{lst:stats}) i~,,najlepsza trasa''.
+
+\begin{lstlisting}[caption={Przykład wyjścia statystyk populacji (\texttt{print\_population\_stats}).},label=lst:stats]
+=== STATYSTYKI POPULACJI POCZATKOWEJ ===
+Liczba tras: 50
+Spelnia wszystko: 50/50
+Spelnia budzet: 50/50
+Spelnia limit czasu: 50/50
+Spelnia ograniczenia typow: 50/50
+
+Sredni calkowity czas: ...
+Sredni koszt ruchu: ...
+Sredni uzyty budzet: ...
+Sredni a liczba atrakcji: ...
+Srednia wartosc atrakcji: ...
+Srednia dlugosc sciezki (liczba pol): ...
+
+Srednia liczba atrakcji kazdego typu:
+  Typ 0: ... (min=..., max=..., time=...)
+  ...
+\end{lstlisting}
+
+\subsubsection{Krok 3. Walidacja wygenerowanej populacji}
+
+Skrypt \texttt{examples/validate\_population.py} sprawdza, czy:
+\begin{itemize}
+    \item każda trasa ma flagę \texttt{feasible=true},
+    \item żadna krawędź (nieskierowana) nie występuje w~trasie dwa razy.
+\end{itemize}
+
+\begin{lstlisting}[language=bash]
+python examples/validate_population.py initial_population.json
+\end{lstlisting}
+
+Zwraca kod wyjścia 0 w~razie pomyślnej walidacji.
+
+\subsubsection{Krok 4. Wizualizacja tras}
+
+\begin{lstlisting}[language=bash]
+python visualize_paths.py
+\end{lstlisting}
+
+Domyślnie funkcja \texttt{draw\_paths} czyta \texttt{map.json}
+i~\texttt{initial\_population.json}. Można wybrać podzbiór tras po id:
+
+\begin{lstlisting}[language=Python]
+from visualize_paths import draw_paths
+draw_paths(selected_ids=[0, 1, 5, 10])
+\end{lstlisting}
+
+Lub wskazać inny plik populacji:
+
+\begin{lstlisting}[language=bash]
+python -c "from visualize_paths import draw_paths; draw_paths(population_file='initial_population_abc.json')"
+\end{lstlisting}
+
+Wynik: okno Matplotlib z~wizualizacją (atrakcje jako czarne punkty,
+ścieżki w~różnych kolorach, start jako zielony kwadrat, koniec jako
+czerwony X).
+
+\subsection{Uruchamianie --- aplikacja web (Streamlit)}
+
+\begin{lstlisting}[language=bash]
+streamlit run app.py
+\end{lstlisting}
+
+Aplikacja udostępnia dwa tryby (wybierane w~bocznym pasku):
+
+\subsubsection{Tryb ,,Edytor / Generator''}
+
+W~lewej kolumnie znajduje się formularz generatora mapy oraz edytor
+parametrów (rozmiar, liczba atrakcji, ziarno, zakresy wartości i~wag,
+typy atrakcji, rozkład wag --- \texttt{uniform}/\texttt{clusters},
+budżet, punkty startu i~końca). Po wygenerowaniu można dalej ręcznie
+edytować mapę (nazwę, budżet, listę atrakcji w~tabeli) oraz wczytywać
+i~zapisywać scenariusze (\texttt{scenarios/*.json}).
+
+W~prawej kolumnie widoczna jest mapa z~wagami w~kolorach. Można uruchomić
+jeden z~dwóch baselineów:
+\begin{itemize}
+    \item \textbf{Greedy (zachłanny)} --- \texttt{solve\_greedy\_attractions},
+    \item \textbf{Random walk} --- \texttt{solve\_random\_walk}.
+\end{itemize}
+
+Pod wynikiem prezentowane są metryki: koszt, budżet, wartość, liczba
+odwiedzonych atrakcji oraz informacja, czy ścieżka mieści się w~budżecie.
+
+\subsubsection{Tryb ,,Wyniki''}
+
+Pozwala wczytać plik wyników o~strukturze:
+
+\begin{lstlisting}[language=json]
+{
+  "map_file": "scenarios/small.json",
+  "runs": [
+    {
+      "algo": "GA",
+      "path": [[x, y], ...],
+      "history": [fitness_0, fitness_1, ...],
+      "fitness": liczba
+    },
+    ...
+  ]
+}
+\end{lstlisting}
+
+W~zakładkach prezentowane są: \emph{mapa z~nałożonymi ścieżkami},
+\emph{wykres konwergencji} (na podstawie \texttt{history}) i~\emph{tabela
+zbiorcza} (\texttt{algorithm}, fitness, koszt, wartość, liczba atrakcji,
+długość ścieżki, flaga \emph{feasible}).
+
+\subsection{Ustawianie parametrów instancji}
+
+Parametry instancji ustawiane są w~zależności od~ścieżki użycia:
+
+\begin{itemize}
+    \item \textbf{CLI} --- bezpośrednio w~pliku \texttt{map\_generator.py}
+          (zmienne \texttt{rows}, \texttt{cols}, \texttt{time\_limit},
+          \texttt{budget}, wywołania \texttt{add\_attraction\_type}),
+          a~następnie uruchomienie \texttt{python map\_generator.py}.
+    \item \textbf{Web} --- formularz w~lewej kolumnie trybu
+          ,,Edytor / Generator'' (rozmiar, liczba atrakcji, zakresy
+          wartości i~wag, typy, dystrybucja, start/koniec, budżet, seed).
+          Można też wczytać gotowy scenariusz z~\texttt{scenarios/} lub
+          z~uploadu pliku.
+\end{itemize}
+
+\subsection{Ustawianie parametrów algorytmu (ABC)}
+
+Parametry sterujące zachowaniem ABC są dostępne jako argumenty linii
+poleceń (patrz wcześniejszy podrozdział). W~praktyce:
+\begin{itemize}
+    \item Zwiększenie \texttt{-{}-iters} i~\texttt{-{}-onlookers} daje lepszą
+          eksploatację, ale wydłuża czas.
+    \item Niższy \texttt{-{}-limit} sprzyja eksploracji (częstsze użycie
+          zwiadowców), wyższy --- eksploatacji.
+    \item \texttt{-{}-seed} zapewnia powtarzalność wyników.
+\end{itemize}
+
+W~kodzie funkcja \texttt{generate\_abc\_population} przyjmuje też dodatkowy
+parametr \texttt{deduplicate} (domyślnie \texttt{True}), pilnujący, by
+populacja końcowa nie zawierała duplikatów ścieżek.
+
+\subsection{Wyniki i sposób ich interpretacji}
+
+\paragraph{Statystyki agregowane.} Funkcja
+\texttt{print\_population\_stats} wypisuje liczność rozwiązań spełniających
+poszczególne ograniczenia (budżet, czas, typy, wszystko), średnie wartości
+metryk i~rozkład liczności typów. Pomaga to ocenić ,,zdrowie'' populacji
+(np.\ niski odsetek \texttt{feasible} może oznaczać zbyt rygorystyczne
+ograniczenia instancji).
+
+\paragraph{Najlepsza trasa.} Skrypt wyświetla cechy najlepszego rozwiązania
+wg leksykograficznej krotki porządkowej (Value $\uparrow$, Time $\downarrow$,
+movement cost $\downarrow$, attraction cost $\downarrow$).
+
+\paragraph{Wizualizacja.} W~oknie \texttt{visualize\_paths.py}:
+\begin{itemize}
+    \item czarne punkty --- atrakcje (każda atrakcja niezależnie od typu),
+    \item linie kolorowe --- poszczególne trasy z~populacji,
+    \item zielony kwadrat --- start,
+    \item czerwony X --- koniec.
+\end{itemize}
+
+Im więcej linii ,,konwerguje'' do podobnego kształtu, tym silniejsza była
+selekcja w~ABC (mniejsza różnorodność końcowa). Jeśli linie są mocno
+różne i~rozproszone, populacja jest zróżnicowana --- co bywa pożądane jako
+materiał wejściowy dla dalszej optymalizacji.
+
+\paragraph{Walidacja.}
+Skrypt \texttt{examples/validate\_population.py} sygnalizuje:
+\begin{itemize}
+    \item \texttt{bad\_no\_repeated\_edges} --- liczba tras łamiących zakaz
+          powtarzania krawędzi (oczekiwane: 0),
+    \item \texttt{infeasible} --- liczba rozwiązań niedopuszczalnych
+          (oczekiwane: 0).
+\end{itemize}
+Sumarycznie wypisuje status \texttt{OK} lub \texttt{NOT OK}.

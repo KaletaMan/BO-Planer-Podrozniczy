@@ -1,0 +1,62 @@
+\section{Wstęp}
+\label{sec:wstep}
+
+\subsection*{Cel projektu}
+
+Celem projektu jest opracowanie narzędzia wspomagającego planowanie trasy
+turystycznej na zadanej mapie. Turysta wyrusza z~ustalonego punktu \emph{start},
+porusza się po siatce komórek o~zróżnicowanych kosztach przejścia i~ma za zadanie
+zakończyć podróż w~punkcie \emph{end}, odwiedzając po drodze atrakcje w~taki sposób,
+aby zmaksymalizować łączną wartość zdobytych atrakcji przy jednoczesnym spełnieniu
+ograniczeń:
+
+\begin{itemize}
+    \item budżetowego (łączny koszt biletów wstępu do odwiedzonych atrakcji nie może
+          przekroczyć założonego budżetu),
+    \item czasowego (łączny czas: ruch po siatce plus czas zwiedzania nie może
+          przekroczyć dostępnego budżetu czasu),
+    \item dotyczącego liczności typów atrakcji (dla każdego typu zdefiniowane są
+          minimalna i~maksymalna liczba atrakcji, które trzeba lub można odwiedzić).
+\end{itemize}
+
+Dodatkowo, ze względów modelowych, przyjęto twarde wymaganie, aby trasa
+\emph{nie używała dwukrotnie tej samej krawędzi} (przejścia między dwoma sąsiednimi
+polami) --- co odpowiada intuicji, że turysta nie chce przechodzić tą samą wąską
+ścieżką w~obie strony.
+
+\subsection*{Założenia projektu}
+
+\begin{enumerate}
+    \item Mapa jest dyskretną siatką $H \times W$ komórek. W~każdej komórce
+          $(r,c)$ zdefiniowana jest waga $w_{r,c} \in \N_{+}$ reprezentująca koszt
+          ,,bycia'' w~tej komórce (im wyższa waga, tym trudniejszy/dłuższy teren).
+    \item Ruch w~siatce odbywa się w~jednym z~ośmiu kierunków
+          (4 osiowe + 4 diagonalne). Koszt przejścia z~komórki $(r,c)$ do sąsiada
+          wynosi $w_{r,c}$ pomnożone przez $1{,}0$ dla ruchu osiowego oraz $1{,}4$
+          dla ruchu diagonalnego (przybliżenie $\sqrt{2}$).
+    \item Atrakcje to wyróżnione komórki o~zadanej wartości, koszcie biletu, czasie
+          zwiedzania i~typie. Wizyta polega na wejściu na komórkę atrakcji; ponowne
+          odwiedzenie tej samej atrakcji nie daje żadnych dodatkowych punktów.
+    \item Algorytm operuje w~paradygmacie \emph{generowania populacji rozwiązań
+          dopuszczalnych} --- każde rozwiązanie w~populacji końcowej musi spełniać
+          wszystkie ograniczenia (budżet, czas, liczności typów, brak powtórzonych
+          krawędzi).
+    \item Komponentem dostarczającym rozwiązanie początkowe i~jednocześnie
+          mechanizmem poszukiwania jest meta-heurystyka \emph{Artificial Bee Colony}
+          (ABC).
+    \item Aplikacja składa się z~modułów: \texttt{map\_generator} (generator instancji),
+          \texttt{parser}/\texttt{load\_json} (obsługa formatu danych),
+          \texttt{abc\_algorithm} (rdzeń algorytmu), \texttt{initial\_population}
+          (skrypt uruchomieniowy generujący populację) oraz \texttt{visualize\_paths}
+          (wizualizacja). Dodatkowo dostępna jest aplikacja webowa
+          (\texttt{app.py}, Streamlit) służąca jako interaktywny edytor mapy.
+\end{enumerate}
+
+\subsection*{Zakres dokumentu}
+
+Dokument prezentuje formalny opis problemu i~jego model matematyczny
+(rozdział~\ref{sec:zagadnienie}), szczegółowo omawia zaprojektowaną metodę
+rozwiązania (rozdział~\ref{sec:algorytmy}), opis aplikacji wraz z~instrukcją
+uruchomienia (rozdział~\ref{sec:aplikacja}), zarys planowanych eksperymentów
+(rozdział~\ref{sec:eksperymenty}), wnioski i~kierunki rozwoju
+(rozdział~\ref{sec:podsumowanie}) oraz literaturę i~dodatek z~podziałem prac.
