@@ -2,10 +2,11 @@
 \label{sec:algorytmy}
 
 W~ramach projektu rozważano i~częściowo zaimplementowano kilka podejść do
-generowania trasy. Główną meta-heurystyką, która została w~pełni zaimplementowana
-i~służy do generowania populacji rozwiązań dopuszczalnych, jest \emph{Artificial
-Bee Colony} (ABC). Dodatkowo, jako prosty baseline porównawczy i~mechanizm
-testowania interfejsu, zaimplementowano dwie pomocnicze procedury:
+generowania trasy. Głównymi meta-heurystykami, które zostały zaimplementowane
+i~służą do generowania populacji rozwiązań dopuszczalnych, są \emph{Artificial
+Bee Colony} (ABC) oraz \emph{Bee Algorithm} (BA, tzw.\ taniec pszczół). Dodatkowo,
+jako prosty baseline porównawczy i~mechanizm testowania interfejsu,
+zaimplementowano dwie pomocnicze procedury:
 \emph{Random Walk} oraz \emph{Greedy attractions} (zachłanne dążenie do najbliższej
 atrakcji).
 
@@ -299,6 +300,114 @@ Funkcja \texttt{evaluate\_path} (plik \texttt{initial\_population.py}) liczy:
 Spójność z~modelem matematycznym jest zapewniona: zwracana krotka cech
 odpowiada wprost ograniczeniom \eqref{eq:budget}--\eqref{eq:types}.
 
+\subsection{Bee Algorithm (BA, taniec pszczół)}
+\label{sec:bee}
+
+Bee Algorithm (BA) to populacyjna meta-heurystyka inspirowana sposobem, w~jaki
+pszczoły \emph{tańcem} komunikują jakość znalezionych źródeł pokarmu i~rekrutują
+inne osobniki do dalszej eksploracji otoczenia. W~naszej implementacji BA działa
+na \textbf{tej samej reprezentacji rozwiązania} (waypointy + materializacja
+A\textsuperscript{*}) i~na \textbf{tym samym sąsiedztwie} (operatory mutacji) co
+ABC, a~różni się przede wszystkim mechanizmem \emph{rekrutacji} oraz
+\emph{porzucania} rozwiązań.
+
+Intuicyjnie odpowiada to następującym rolom:
+\begin{itemize}
+    \item \textbf{Rekruterzy (tańczące pszczoły)} --- podzbiór najlepszych rozwiązań,
+          których jakość jest komunikowana i~które przyciągają kolejne próby
+          ulepszania.
+    \item \textbf{Zbieraczki (foragers)} --- wykonują lokalne przeszukiwanie,
+          generując sąsiadów (mutacje waypointów) wokół rozwiązań-rekruterów.
+    \item \textbf{Zwiadowcy (scouts)} --- wprowadzają różnorodność, zastępując część
+          słabych / zastanych rozwiązań nowymi losowymi rozwiązaniami dopuszczalnymi.
+\end{itemize}
+
+Schemat iteracji BA dla naszego problemu przedstawia~\Cref{alg:bee-overview}.
+
+\begin{algorithm}[H]
+\caption{Generowanie populacji metodą BA (ogólny zarys)}
+\label{alg:bee-overview}
+\begin{algorithmic}[1]
+\Require dane wejściowe \texttt{parsed\_data}, rozmiar populacji $N$, liczba iteracji $I$, prawdopodobieństwo rekrutacji $p_r$, udział zwiadowców $r_s$, próg jakości tańca $Q$ (\%), cierpliwość porzucenia $A$
+\Ensure populacja $\mathcal{P} = \{s_1, \dots, s_N\}$ rozwiązań dopuszczalnych
+\State $\mathcal{P} \gets$ $N$ losowych rozwiązań dopuszczalnych (por.\ \Cref{sec:init-pop})
+\State $s^\star \gets \bot$
+\For{$it = 1, \dots, I$}
+    \State $b \gets \max\limits_{s \in \mathcal{P}} s$ \Comment{najlepsze wg relacji $\succ$}
+    \If{$s^\star = \bot$ \textbf{lub} $b \succ s^\star$} \State $s^\star \gets b$ \EndIf
+    \State $\theta \gets \mathrm{Value}(s^\star) \cdot (Q/100)$ \Comment{próg jakości tańca}
+    \State $E \gets \{ i : \mathrm{Value}(\mathcal{P}_i) \ge \theta \}$ \Comment{rekruterzy}
+    \If{$E = \emptyset$} \State $E \gets \{\arg\max_i \mathcal{P}_i\}$ \EndIf
+    \State $w_i \gets \mathrm{Value}(\mathcal{P}_i) + 1$ dla $i \in E$ \Comment{wagi rekrutacji}
+    \State $F \gets \max(1, \lfloor N \cdot p_r \rfloor)$ \Comment{liczba zbieraczek}
+    \For{$k = 1, \dots, F$}
+        \State $i \gets$ \Call{WylosujZWagami}{$E, w$}
+        \State $s' \gets$ \Call{MutacjaWaypointow}{$\mathcal{P}_i$} \Comment{por.\ \Cref{sec:operators}}
+        \If{$s' \ne \bot$ \textbf{i} $s' \succ \mathcal{P}_i$}
+            \State $\mathcal{P}_i \gets s'$;\ \ $\mathcal{P}_i.\text{trial} \gets 0$
+        \Else
+            \State $\mathcal{P}_i.\text{trial} \gets \mathcal{P}_i.\text{trial} + 1$
+        \EndIf
+    \EndFor
+    \State $S \gets \max(1, \lfloor N \cdot r_s \rfloor)$ \Comment{liczba zwiadowców}
+    \State wybierz $S$ indeksów o~największym \texttt{trial}
+    \ForAll{wybrane $i$}
+        \State $\mathcal{P}_i \gets$ \Call{LosoweRozwiazanieDopuszczalne}{}
+        \State $\mathcal{P}_i.\text{trial} \gets 0$
+    \EndFor
+    \For{$i = 1, \dots, N$} \Comment{porzucanie stagnujących źródeł}
+        \If{$\mathcal{P}_i.\text{trial} \ge A$}
+            \State $\mathcal{P}_i \gets$ \Call{LosoweRozwiazanieDopuszczalne}{}
+            \State $\mathcal{P}_i.\text{trial} \gets 0$
+        \EndIf
+    \EndFor
+\EndFor
+\State \Return $\mathcal{P}$
+\end{algorithmic}
+\end{algorithm}
+
+Relacja porządku $s' \succ s$ jest taka sama jak w~ABC (leksykograficzne
+porównanie krotek jakości; por.\ \Cref{sec:abc}).
+
+\subsubsection{Reprezentacja rozwiązania}
+
+Reprezentacja (waypointy + materializacja ścieżki) jest identyczna jak w~ABC
+(\Cref{sec:repr}).
+
+\subsubsection{Wygenerowanie populacji początkowej}
+
+Inicjalizacja populacji polega na~wygenerowaniu $N$ losowych rozwiązań
+\textbf{dopuszczalnych} przez losowanie waypointów i~materializację ścieżki
+(\Cref{sec:init-pop}, \Cref{alg:random-waypoints}, \Cref{alg:build-path}).
+
+\subsubsection{Operatory modyfikacji (sąsiedztwo)}
+
+Lokalne przeszukiwanie wykonywane przez zbieraczki wykorzystuje ten sam operator
+\textsc{MutacjaWaypointow} co ABC (\Cref{sec:operators}, \Cref{tab:operators},
+\Cref{alg:mutate}).
+
+\subsubsection{Rekrutacja (taniec) i dobór obszarów eksploatacji}
+
+W~każdej iteracji wyznaczany jest próg jakości tańca $Q$ (w~\%), a~następnie do
+zbioru rekruterów trafiają te rozwiązania, których wartość
+$\mathrm{Value}(s)$ jest nie mniejsza niż $Q\%$ najlepszej wartości
+zaobserwowanej dotychczas. Zbieraczki losują następnie źródła do eksploracji
+z~rozkładu proporcjonalnego do $\mathrm{Value}(s)+1$ (żeby uniknąć wag zerowych).
+Parametr $p_r$ steruje liczbą prób ulepszania w~iteracji.
+
+\subsubsection{Zwiadowcy i porzucanie rozwiązań}
+
+W~implementacji zastosowano dwa mechanizmy dywersyfikacji:
+\begin{enumerate}
+    \item \textbf{Zwiadowcy} --- w~każdej iteracji część populacji (udział $r_s$)
+          jest zastępowana nowymi losowymi rozwiązaniami dopuszczalnymi; jako
+          kandydatów wybieramy te osobniki, które mają największy licznik
+          stagnacji \texttt{trial}.
+    \item \textbf{Porzucanie} --- jeżeli licznik \texttt{trial} przekroczy
+          \texttt{abandon\_patience} $=A$, źródło jest uznawane za nieperspektywiczne
+          i~również zastępowane nowym losowym rozwiązaniem.
+\end{enumerate}
+
 \subsection{Podejścia pomocnicze}
 \label{sec:baselines}
 
@@ -347,5 +456,5 @@ do finalnej implementacji:
           twardych ograniczeń typów; pominięto.
 \end{itemize}
 
-W~niniejszej dokumentacji szczegółowo opisany jest tylko algorytm ABC,
-gdyż tylko on doczekał się pełnej implementacji.
+W~niniejszej dokumentacji szczegółowo opisane są algorytmy ABC oraz Bee Algorithm,
+ponieważ oba podejścia zostały zaimplementowane i~wykorzystywane w~aplikacji.
