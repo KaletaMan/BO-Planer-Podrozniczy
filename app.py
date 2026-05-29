@@ -11,6 +11,7 @@ from src.path_solver import evaluate_path, solve_greedy_attractions, solve_rando
 from src.ui_io import ValidationIssue, list_maps, load_map, save_map, validate_map
 from src.ui_viz import plot_convergence, plot_map, plot_path_on_map, plot_paths_comparison
 from src.abc_ui_adapter import solve_abc_ui
+from src.bee_ui_adapter import solve_bee_ui
 
 st.set_page_config(page_title="Trasy turystyczne — BO", layout="wide")
 
@@ -50,6 +51,14 @@ if "abc_partial" not in st.session_state:
     st.session_state.abc_partial = None
 if "abc_running" not in st.session_state:
     st.session_state.abc_running = False
+if "bee_cancel_requested" not in st.session_state:
+    st.session_state.bee_cancel_requested = False
+if "bee_partial" not in st.session_state:
+    st.session_state.bee_partial = None
+if "bee_running" not in st.session_state:
+    st.session_state.bee_running = False
+if "last_algo" not in st.session_state:
+    st.session_state.last_algo = None
 
 
 # ── Sidebar mode selector ─────────────────────────────────────────────────────
@@ -259,40 +268,24 @@ if mode == "Edytor / Generator":
         st.subheader("Uruchom algorytm")
         st.caption("Wybierz metodę i uruchom. Wynik zostanie narysowany na mapie.")
 
-        algo = st.radio("Algorytm", ["Greedy (zachłanny)", "Random walk", "ABC"], horizontal=True)
-        if algo == "ABC":
-            st.markdown("### Parametry ABC")
+        algo = st.radio("Algorytm", ["Greedy (zachłanny)", "Random walk", "ABC", "Bee (taniec pszczol)"], horizontal=True)
 
-            c1, c2, c3 = st.columns(3)
-
-            abc_population = c1.number_input(
-                "Population size",
-                min_value=5,
-                max_value=500,
-                value=30,
-                step=5
-            )
-
-            abc_iterations = c2.number_input(
-                "Iterations",
-                min_value=10,
-                max_value=5000,
-                value=500,
-                step=50
-            )
-
-            abc_limit = c3.number_input(
-                "Scout limit",
-                min_value=1,
-                max_value=500,
-                value=30,
-                step=5
-            )
-
-        else:
-            abc_population = 30
-            abc_iterations = 500
-            abc_limit = 30
+        with st.expander("Parametry algorytmu", expanded=True):
+            if algo.startswith("ABC"):
+                abc_population_size = st.number_input("ABC: populacja", min_value=5, max_value=200, value=30, step=5)
+                abc_iterations = st.number_input("ABC: iteracje", min_value=10, max_value=5000, value=500, step=10)
+                abc_limit = st.number_input("ABC: limit porzucenia", min_value=1, max_value=500, value=30, step=5)
+                abc_redraw_every = st.number_input("ABC: odswiezanie (iteracje)", min_value=1, max_value=100, value=5, step=1)
+            elif algo.startswith("Bee"):
+                bee_population_size = st.number_input("Bee: populacja", min_value=5, max_value=200, value=30, step=5)
+                bee_iterations = st.number_input("Bee: iteracje", min_value=10, max_value=5000, value=400, step=10)
+                bee_recruitment_probability = st.slider("Bee: prawdopodobienstwo rekrutacji", 0.0, 1.0, 0.6, 0.05)
+                bee_scout_ratio = st.slider("Bee: udzial zwiadowcow", 0.0, 1.0, 0.1, 0.05)
+                bee_dance_quality_threshold = st.slider("Bee: prog jakosci tanca (%)", 0, 100, 50, 5)
+                bee_abandon_patience = st.number_input("Bee: cierpliwosc porzucenia", min_value=1, max_value=500, value=30, step=5)
+                bee_redraw_every = st.number_input("Bee: odswiezanie (iteracje)", min_value=1, max_value=100, value=5, step=1)
+            else:
+                st.caption("Brak dodatkowych parametrow dla wybranego algorytmu.")
 
         run_btn = st.button("Uruchom ▶", type="primary")
 
@@ -301,22 +294,31 @@ if mode == "Edytor / Generator":
             st.session_state.abc_running = False
             if st.session_state.get("abc_partial"):
                 st.info("Poprzednie uruchomienie ABC zostało przerwane — najlepszy wynik jest zachowany.")
+        if algo.startswith("Bee") and st.session_state.get("bee_running", False) and not run_btn:
+            st.session_state.bee_running = False
+            if st.session_state.get("bee_partial"):
+                st.info("Poprzednie uruchomienie Bee zostało przerwane — najlepszy wynik jest zachowany.")
 
         if run_btn:
             errors = [i for i in validate_map(st.session_state.map_data) if i.level == "error"]
             if errors:
                 st.error("Napraw błędy walidacji przed uruchomieniem algorytmu.")
             else:
+                best_iteration = None
                 if algo.startswith("Greedy"):
                     path = solve_greedy_attractions(st.session_state.map_data)
                     ev = evaluate_path(st.session_state.map_data, path)
+                    st.session_state.last_history = None
+                    st.session_state.last_algo = "Greedy"
                 elif algo.startswith("Random"):
                     path = solve_random_walk(
                         st.session_state.map_data,
                         seed=int(st.session_state.map_data.get("seed", 0)),
                     )
                     ev = evaluate_path(st.session_state.map_data, path)
-                else:
+                    st.session_state.last_history = None
+                    st.session_state.last_algo = "Random walk"
+                elif algo.startswith("ABC"):
                     st.session_state.abc_cancel_requested = False
                     st.session_state.abc_partial = None
                     st.session_state.abc_running = True
@@ -324,7 +326,7 @@ if mode == "Edytor / Generator":
                     st.session_state.abc_global_best_path = None
                     st.session_state.abc_global_best_iteration = None
 
-                    redraw_every = 5
+                    redraw_every = int(abc_redraw_every)
 
                     stop_clicked = st.button("Zatrzymaj ⏹", type="secondary", key="abc_stop")
                     if stop_clicked:
@@ -421,10 +423,11 @@ if mode == "Edytor / Generator":
                         if should_redraw:
                             st.session_state.last_eval = evaluate_path(st.session_state.map_data, payload["best_path"])
                         st.session_state.last_history = hist
+                        st.session_state.last_algo = "ABC"
 
                     abc_result = solve_abc_ui(
                         st.session_state.map_data,
-                        population_size=int(abc_population),
+                        population_size=int(abc_population_size),
                         iterations=int(abc_iterations),
                         limit=int(abc_limit),
                         seed=int(st.session_state.map_data.get("seed", 0)),
@@ -438,10 +441,132 @@ if mode == "Edytor / Generator":
                     path = abc_result["path"]
                     ev = evaluate_path(st.session_state.map_data, path)
                     st.session_state.last_history = abc_result["history"]
+                    st.session_state.last_algo = "ABC"
                     best_iteration = st.session_state.get(
                         "abc_global_best_iteration"
                     )
+                else:
+                    st.session_state.bee_cancel_requested = False
+                    st.session_state.bee_partial = None
+                    st.session_state.bee_running = True
 
+                    st.session_state.bee_global_best = None
+                    st.session_state.bee_global_best_path = None
+                    st.session_state.bee_global_best_iteration = None
+
+                    redraw_every = int(bee_redraw_every)
+
+                    stop_clicked = st.button("Zatrzymaj ⏹", type="secondary", key="bee_stop")
+                    if stop_clicked:
+                        st.session_state.bee_cancel_requested = True
+
+                    progress = st.progress(0)
+                    status = st.empty()
+                    map_placeholder = st.empty()
+                    table_placeholder = st.empty()
+                    chart_placeholder = st.empty()
+
+                    def _on_iter(payload: dict):
+                        st.session_state.bee_partial = payload
+                        it = payload["iteration"]
+                        hist = payload["history"]
+                        best = payload["best"]
+                        current_top_paths = payload.get("top_paths") or [payload["best_path"]]
+
+                        global_best = st.session_state.get("bee_global_best")
+                        if global_best is None or best.get("total_value", 0) > global_best.get("total_value", 0):
+                            st.session_state.bee_global_best = best
+                            st.session_state.bee_global_best_path = payload["best_path"]
+                            st.session_state.bee_global_best_iteration = payload["iteration"]
+
+                        current_best_path = current_top_paths[0] if len(current_top_paths) > 0 else payload["best_path"]
+                        current_second_path = current_top_paths[1] if len(current_top_paths) > 1 else None
+
+                        global_best_path = st.session_state.get("bee_global_best_path")
+                        if global_best_path is None:
+                            global_best_path = payload["best_path"]
+                            st.session_state.bee_global_best_path = global_best_path
+
+                        progress.progress(int(min(100, round(100 * it / max(1, bee_iterations)))))
+                        status.write(
+                            f"Iteracja: {it} | najlepsza wartość: {best.get('total_value')} | "
+                            f"czas: {round(float(best.get('total_time', 0.0)), 2)} | "
+                            f"atrakcje: {len(best.get('visited_attractions', []))}"
+                        )
+
+                        should_redraw = (it % redraw_every == 0) or (it == bee_iterations) or st.session_state.get("bee_cancel_requested", False)
+                        if should_redraw:
+                            paths_dict = {
+                                "Najlepsza w tej iteracji": current_best_path,
+                            }
+                            if current_second_path is not None:
+                                paths_dict["Druga najlepsza w tej iteracji"] = current_second_path
+                            paths_dict["Najlepsza globalnie"] = global_best_path
+
+                            fig = plot_paths_comparison(
+                                st.session_state.map_data,
+                                paths_dict,
+                                title="Bee — najlepsze ścieżki",
+                                show_attraction_labels=False,
+                            )
+                            map_placeholder.pyplot(fig)
+                            plt = __import__("matplotlib.pyplot", fromlist=["pyplot"])
+                            plt.close(fig)
+
+                            import pandas as _pd
+
+                            if payload.get("top_solutions"):
+                                rows = []
+                                for rank, sol in enumerate(payload["top_solutions"], start=1):
+                                    rows.append({
+                                        "rank": rank,
+                                        "value": sol.get("total_value"),
+                                        "time": round(float(sol.get("total_time", 0.0)), 2),
+                                        "movement": round(float(sol.get("movement_time", 0.0)), 2),
+                                        "cost": sol.get("attraction_cost"),
+                                        "visited": len(sol.get("visited_attractions", [])),
+                                    })
+                                table_placeholder.dataframe(_pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+                            if hist:
+                                df = _pd.DataFrame(hist)
+                                chart_df = df.rename(columns={
+                                    "iteration": "Iteracja",
+                                    "best_value": "Najlepsza wartość",
+                                })
+                                chart_placeholder.line_chart(
+                                    chart_df,
+                                    x="Iteracja",
+                                    y="Najlepsza wartość",
+                                )
+
+                        st.session_state.last_path = payload["best_path"]
+                        if should_redraw:
+                            st.session_state.last_eval = evaluate_path(st.session_state.map_data, payload["best_path"])
+                        st.session_state.last_history = hist
+                        st.session_state.last_algo = "Bee"
+
+                    bee_result = solve_bee_ui(
+                        st.session_state.map_data,
+                        population_size=int(bee_population_size),
+                        iterations=int(bee_iterations),
+                        recruitment_probability=float(bee_recruitment_probability),
+                        scout_ratio=float(bee_scout_ratio),
+                        dance_quality_threshold=int(bee_dance_quality_threshold),
+                        abandon_patience=int(bee_abandon_patience),
+                        seed=int(st.session_state.map_data.get("seed", 0)),
+                        on_iteration=_on_iter,
+                        should_stop=lambda: st.session_state.get("bee_cancel_requested", False),
+                        top_k=3,
+                    )
+
+                    st.session_state.bee_running = False
+
+                    path = bee_result["path"]
+                    ev = evaluate_path(st.session_state.map_data, path)
+                    st.session_state.last_history = bee_result["history"]
+                    st.session_state.last_algo = "Bee"
+                    best_iteration = st.session_state.get("bee_global_best_iteration")
                 st.session_state.last_path = path
                 st.session_state.last_eval = ev
 
@@ -470,7 +595,8 @@ if mode == "Edytor / Generator":
             c6.metric("Atrakcje", len(ev.get("attractions_visited", [])))
             c7.metric("Długość ścieżki", ev.get("path_length", len(st.session_state.last_path or [])))
             if "last_history" in st.session_state and st.session_state.last_history:
-                st.subheader("Konwergencja ABC")
+                algo_label = st.session_state.get("last_algo") or "ABC"
+                st.subheader(f"Konwergencja {algo_label}")
 
                 import pandas as pd
 
@@ -487,12 +613,14 @@ if mode == "Edytor / Generator":
                     y="Najlepsza wartość"
                 )
 
-                best_iter = st.session_state.get("abc_global_best_iteration")
+                last_algo = st.session_state.get("last_algo")
+                if last_algo == "Bee":
+                    best_iter = st.session_state.get("bee_global_best_iteration")
+                else:
+                    best_iter = st.session_state.get("abc_global_best_iteration")
 
                 if best_iter is not None:
-                    st.info(
-                        f"Najlepsze rozwiązanie znaleziono w iteracji: {best_iter}"
-                    )
+                    st.info(f"Najlepsze rozwiązanie znaleziono w iteracji: {best_iter}")
 
             if ev["feasible"]:
                 st.success("Ścieżka spełnia ograniczenia (czas + budżet).")
