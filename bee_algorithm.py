@@ -195,6 +195,7 @@ def _try_build_solution_from_waypoints(parsed_data, waypoints, start, end, evalu
     if path is None:
         return None
 
+    parsed_data["_objective_calls"] = parsed_data.get("_objective_calls", 0) + 1
     sol = evaluate_path_fn(path, parsed_data)
     if not sol.get("feasible", False):
         return None
@@ -402,6 +403,9 @@ def generate_bee_population(
     rows = parsed_data["rows"]
     cols = parsed_data["cols"]
     start, end = _default_start_end(rows, cols, start, end)
+    objective_calls = 0
+    parsed_data["_objective_calls"] = 0
+    best_objective_calls = 0
 
     if seed is not None:
         random.seed(seed)
@@ -442,6 +446,7 @@ def generate_bee_population(
         best = _best_solution(population)
         if _solution_is_better(best, best_so_far):
             best_so_far = best
+            best_objective_calls = parsed_data.get("_objective_calls", 0)
         best_value = best_so_far["total_value"]
         threshold_value = best_value * (float(dance_quality_threshold) / 100.0)
         eligible_indices = [
@@ -528,4 +533,6 @@ def generate_bee_population(
         "population": population,
         "best": best_so_far,
         "history": history,
+        "objective_calls_total": parsed_data.get("_objective_calls", 0),
+        "objective_calls_to_best": best_objective_calls,
     }

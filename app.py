@@ -310,6 +310,8 @@ if mode == "Edytor / Generator":
                     ev = evaluate_path(st.session_state.map_data, path)
                     st.session_state.last_history = None
                     st.session_state.last_algo = "Greedy"
+                    st.session_state.last_objective_calls = 1
+                    st.session_state.last_objective_calls_to_best = 1
                 elif algo.startswith("Random"):
                     path = solve_random_walk(
                         st.session_state.map_data,
@@ -318,6 +320,8 @@ if mode == "Edytor / Generator":
                     ev = evaluate_path(st.session_state.map_data, path)
                     st.session_state.last_history = None
                     st.session_state.last_algo = "Random walk"
+                    st.session_state.last_objective_calls = 1
+                    st.session_state.last_objective_calls_to_best = 1
                 elif algo.startswith("ABC"):
                     st.session_state.abc_cancel_requested = False
                     st.session_state.abc_partial = None
@@ -441,6 +445,8 @@ if mode == "Edytor / Generator":
                     path = abc_result["path"]
                     ev = evaluate_path(st.session_state.map_data, path)
                     st.session_state.last_history = abc_result["history"]
+                    st.session_state.last_objective_calls_total = abc_result.get("objective_calls_total", "—")
+                    st.session_state.last_objective_calls_to_best = abc_result.get("objective_calls_to_best", "—")
                     st.session_state.last_algo = "ABC"
                     best_iteration = st.session_state.get(
                         "abc_global_best_iteration"
@@ -565,6 +571,8 @@ if mode == "Edytor / Generator":
                     path = bee_result["path"]
                     ev = evaluate_path(st.session_state.map_data, path)
                     st.session_state.last_history = bee_result["history"]
+                    st.session_state.last_objective_calls_total = bee_result.get("objective_calls_total", "—")
+                    st.session_state.last_objective_calls_to_best = bee_result.get("objective_calls_to_best", "—")
                     st.session_state.last_algo = "Bee"
                     best_iteration = st.session_state.get("bee_global_best_iteration")
                 st.session_state.last_path = path
@@ -574,11 +582,10 @@ if mode == "Edytor / Generator":
                     "algo": algo,
                     "path": path,
                     "history": st.session_state.get("last_history", []),
-
                     "fitness": ev.get("value_collected", 0),
-
                     "best_iteration": best_iteration,
-
+                    "objective_calls_to_best": st.session_state.get("last_objective_calls_to_best", "—"),
+                    "objective_calls_total": st.session_state.get("last_objective_calls_total", "—"),
                     "evaluation": ev,
                 }
 
@@ -586,7 +593,7 @@ if mode == "Edytor / Generator":
 
         if st.session_state.last_eval:
             ev = st.session_state.last_eval
-            c1, c2, c3, c4, c5, c6, c7 = st.columns(7)
+            c1, c2, c3, c4, c5, c6, c7, c8, c9 = st.columns(9)
             c1.metric("Czas ruchu (min)", round(float(ev.get("movement_time", ev.get("cost", 0.0))), 2))
             c2.metric("Limit czasu (min)", st.session_state.map_data.get("time_limit"))
             c3.metric("Wydane (ceny)", round(float(ev.get("attraction_cost", 0.0)), 2))
@@ -594,6 +601,15 @@ if mode == "Edytor / Generator":
             c5.metric("Wartość", ev.get("value_collected", 0))
             c6.metric("Atrakcje", len(ev.get("attractions_visited", [])))
             c7.metric("Długość ścieżki", ev.get("path_length", len(st.session_state.last_path or [])))
+            c8.metric(
+                "Wywołania celu do best",
+                st.session_state.get("last_objective_calls_to_best", "—")
+            )
+
+            c9.metric(
+                "Wywołania celu łącznie",
+                st.session_state.get("last_objective_calls_total", "—")
+            )
             if "last_history" in st.session_state and st.session_state.last_history:
                 algo_label = st.session_state.get("last_algo") or "ABC"
                 st.subheader(f"Konwergencja {algo_label}")
@@ -774,5 +790,8 @@ else:
 
                 "Feasible":
                     "✓" if ev.get("feasible") else "✗",
+
+                "Wywołania celu do best": r.get("objective_calls_to_best", "—"),
+                "Wywołania celu łącznie": r.get("objective_calls_total", "—"),
             })
         st.dataframe(pd.DataFrame(rows), use_container_width=True)
