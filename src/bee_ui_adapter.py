@@ -166,4 +166,6 @@ def solve_bee_ui(
         "path": ui_path,
         "history": history,
         "best": best,
+        "objective_calls_total": result.get("objective_calls_total", 0),
+        "objective_calls_to_best": result.get("objective_calls_to_best", 0),
     }

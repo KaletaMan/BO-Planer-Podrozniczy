@@ -1,97 +1,282 @@
+```latex
 \section{Eksperymenty}
 \label{sec:eksperymenty}
 
-W~bieżącej wersji projektu wdrożony jest mechanizm zbierania metryk
-populacji (\texttt{print\_population\_stats} w~\texttt{initial\_population.py})
-oraz walidator \texttt{examples/validate\_population.py}, co stanowi
-podstawę pod planowane eksperymenty. Pełna seria pomiarów porównawczych
-nie została jeszcze przeprowadzona --- w~tym rozdziale prezentujemy
-jedynie zarys planu eksperymentalnego oraz dane, jakie są możliwe do
-uzyskania z~aktualnego kodu.
+Celem eksperymentów jest ocena jakości tras generowanych przez zaimplementowane
+algorytmy oraz analiza wpływu parametrów algorytmów rojowych na jakość
+rozwiązania, szybkość zbieżności oraz stabilność wyników.
 
-\subsection{Plan eksperymentalny}
+W aplikacji zaimplementowano cztery metody generowania tras:
+\begin{itemize}
+    \item \texttt{Random Walk},
+    \item \texttt{Greedy attractions},
+    \item algorytm sztucznej kolonii pszczół (\texttt{Artificial Bee Colony}),
+    \item algorytm inspirowany tańcem pszczół (\texttt{Bee Algorithm}).
+\end{itemize}
+
+Dodatkowo aplikacja umożliwia zapisywanie wyników do plików \texttt{JSON},
+wizualizację tras oraz analizę przebiegu działania algorytmów na podstawie
+historii iteracji.
+
+\subsection{Metodologia eksperymentów}
+
+Eksperymenty wykonywano na automatycznie generowanych instancjach problemu
+planowania trasy turystycznej. Każda instancja zawiera mapę siatkową, punkt
+startowy, punkt końcowy, zbiór atrakcji oraz ograniczenia czasu i budżetu.
+Dla porównania algorytmów wykorzystywano tę samą instancję problemu, dzięki
+czemu wyniki były porównywalne.
 
 \paragraph{Zmienne niezależne.}
+W eksperymentach można zmieniać następujące parametry:
 \begin{itemize}
-    \item Rozmiar mapy: $H \times W \in \{10\!\times\!10,\ 20\!\times\!20,\ 30\!\times\!30\}$.
-    \item Gęstość atrakcji: liczba atrakcji $\in \{4, 15, 30\}$.
-    \item Rozkład wag: \texttt{uniform} vs.\ \texttt{clusters}.
-    \item Parametry ABC: $N \in \{20, 50, 100\}$, $I \in \{50, 200, 500\}$,
-          $L \in \{30, 60, 100\}$, $O \in \{N/2, N, 2N\}$.
-    \item Ziarno losowości \texttt{seed} --- minimum 5 powtórzeń dla każdej
-          kombinacji.
+    \item rozmiar mapy:
+    \[
+        H \times W
+        \in
+        \{
+        10 \times 10,\,
+        20 \times 20,\,
+        30 \times 30
+        \};
+    \]
+    \item liczba atrakcji na mapie;
+    \item rozkład wag pól: \texttt{uniform} oraz \texttt{clusters};
+    \item parametry algorytmu ABC:
+    \begin{itemize}
+        \item rozmiar populacji $N$,
+        \item liczba iteracji $I$,
+        \item limit stagnacji $L$.
+    \end{itemize}
+    \item parametry algorytmu Bee:
+    \begin{itemize}
+        \item rozmiar populacji,
+        \item liczba iteracji,
+        \item prawdopodobieństwo rekrutacji,
+        \item udział zwiadowców,
+        \item próg jakości tańca,
+        \item cierpliwość porzucenia rozwiązania.
+    \end{itemize}
+    \item ziarno generatora liczb losowych, oznaczane jako \texttt{seed}.
 \end{itemize}
 
-\paragraph{Zmienne zależne (mierzone).}
+\paragraph{Zmienne zależne.}
+Dla każdego uruchomienia mierzono:
 \begin{itemize}
-    \item Frakcja rozwiązań dopuszczalnych w~populacji końcowej.
-    \item Średnia, mediana i~maksimum \texttt{total\_value} w~populacji.
-    \item Średni \texttt{movement\_cost}, \texttt{total\_time}, \texttt{attraction\_cost}.
-    \item Średnia długość ścieżki (liczba pól).
-    \item Liczba unikalnych ścieżek (różnorodność populacji).
-    \item Czas wykonania (sekundy) jako funkcja $N$, $I$, $O$.
+    \item końcową wartość rozwiązania,
+    \item koszt odwiedzonych atrakcji,
+    \item całkowity czas przejścia,
+    \item liczbę odwiedzonych atrakcji,
+    \item długość ścieżki,
+    \item iterację znalezienia najlepszego rozwiązania,
+    \item liczbę wywołań funkcji celu,
+    \item informację, czy rozwiązanie spełnia ograniczenia czasu i budżetu.
 \end{itemize}
 
-\paragraph{Hipotezy do weryfikacji.}
-\begin{enumerate}
-    \item Zwiększenie $I$ (liczby iteracji) podnosi medianę \texttt{total\_value},
-          ale z~malejącym przyrostem (krzywa nasycenia).
-    \item Faza onlookerów wzmacnia eksploatację --- wyższe $O$ przy stałym $I$
-          poprawia średnią wartość celu, ale zmniejsza różnorodność populacji.
-    \item Wyższy limit stagnacji $L$ zwiększa eksploatację kosztem
-          eksploracji; bardzo niskie $L$ powoduje nadmierne ,,resetowanie''
-          przez zwiadowców i~uniemożliwia dopracowanie rozwiązań.
-    \item Rozkład wag \texttt{clusters} (klastry niskokosztowe) daje wyższe
-          wartości \texttt{total\_value} w~tym samym budżecie czasu niż
-          \texttt{uniform}.
-\end{enumerate}
+\subsection{Reprezentacja wyników}
 
-\subsection{Porównanie z baselineami}
+Każde uruchomienie algorytmu może zostać zapisane do pliku \texttt{JSON}.
+Plik wynikowy zawiera mapę wejściową oraz listę uruchomień algorytmów.
 
-W~kodzie dostępne są dwa proste algorytmy referencyjne:
-\texttt{solve\_random\_walk} i~\texttt{solve\_greedy\_attractions}
-(\texttt{src/path\_solver.py}). Porównawcza tabela ma postać:
+Zapisywane są między innymi:
+\begin{itemize}
+    \item mapa wejściowa,
+    \item nazwa wybranego algorytmu,
+    \item końcowa ścieżka,
+    \item historia najlepszych wyników w kolejnych iteracjach,
+    \item iteracja znalezienia najlepszego rozwiązania,
+    \item pełna ewaluacja rozwiązania.
+\end{itemize}
+
+Przykładowa struktura pojedynczego wyniku ma postać:
+
+\begin{lstlisting}[language=json, caption={Przykładowa struktura wyniku}]
+{
+  "algo": "ABC",
+  "path": [[0, 0], [1, 0], [2, 1]],
+  "history": [
+    {"iteration": 1, "best_value": 120},
+    {"iteration": 2, "best_value": 140}
+  ],
+  "best_iteration": 17,
+  "evaluation": {
+    "movement_time": 31,
+    "attraction_cost": 26,
+    "value_collected": 180,
+    "feasible": true
+  }
+}
+\end{lstlisting}
+
+Pole \texttt{history} jest szczególnie istotne dla algorytmów rojowych,
+ponieważ pozwala analizować przebieg procesu optymalizacji, a nie tylko
+końcowy wynik.
+
+\subsection{Wyniki przykładowego eksperymentu}
+
+W celu wstępnej oceny działania zaimplementowanych algorytmów przeprowadzono
+eksperyment porównawczy na tej samej instancji problemu. Wszystkie algorytmy
+korzystały z identycznej mapy oraz tych samych ograniczeń czasu i budżetu.
+
+Parametry eksperymentu:
+\begin{itemize}
+    \item limit czasu: $50$,
+    \item budżet: $20$,
+    \item wspólna instancja mapy dla wszystkich algorytmów,
+    \item ABC: $500$ iteracji,
+    \item Bee Algorithm: $500$ iteracji.
+\end{itemize}
+
+Uzyskane wyniki przedstawiono w \Cref{tab:example-results}.
 
 \begin{table}[H]
 \centering
-\caption{Szablon zestawienia wyników (do uzupełnienia).}
-\label{tab:results-template}
-\begin{tabular}{lcccc}
+\caption{Porównanie wyników algorytmów dla przykładowej instancji.}
+\label{tab:example-results}
+\begin{tabular}{lcccccc}
 \toprule
-Algorytm & \texttt{value} & \texttt{move\_cost} & \texttt{total\_time} & \texttt{feasible} \\
+Algorytm &
+Wartość &
+Czas &
+Atrakcje &
+Długość &
+Wywołania celu &
+Feasible \\
 \midrule
-Random Walk        & -- & -- & -- & -- \\
-Greedy attractions & -- & -- & -- & -- \\
-ABC (best in pop)  & -- & -- & -- & -- \\
-ABC (mean in pop)  & -- & -- & -- & -- \\
+Random Walk &
+0 &
+42.6 &
+0 &
+6 &
+1 &
+$\checkmark$ \\
+Greedy &
+235 &
+49.0 &
+4 &
+10 &
+1 &
+$\checkmark$ \\
+ABC &
+360 &
+47.0 &
+6 &
+16 &
+10213 &
+$\checkmark$ \\
+Bee Algorithm &
+185 &
+46.6 &
+3 &
+15 &
+27657 &
+$\checkmark$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\subsection{Zbieranie wyników}
+Na podstawie przeprowadzonego eksperymentu można zauważyć, że najlepszą
+wartość rozwiązania uzyskał algorytm ABC. Osiągnął on wynik $360$ punktów,
+odwiedzając $6$ atrakcji i zachowując ograniczenia problemu. Algorytm zachłanny
+uzyskał wynik $235$, natomiast metoda losowa nie odwiedziła żadnej atrakcji.
+Wynik ten pokazuje, że proste losowe generowanie trasy jest niewystarczające
+dla rozważanego problemu.
 
-Aktualny stan kodu pozwala uzyskać następujące dane bez modyfikacji
-implementacji:
+Bee Algorithm w tym uruchomieniu uzyskał niższą wartość niż ABC, mimo wykonania
+większej liczby ocen funkcji celu w trakcie działania algorytmu. Należy jednak
+podkreślić, że przedstawione wyniki mają charakter wstępny i dotyczą pojedynczej
+instancji problemu. Do wyciągania ogólnych wniosków konieczne jest wykonanie
+większej liczby powtórzeń.
 
+\subsection{Analiza zbieżności}
+
+Dla algorytmów rojowych zapisywana jest historia najlepszej wartości znalezionej
+w kolejnych iteracjach. Pozwala to analizować:
 \begin{itemize}
-    \item Surowe statystyki (\Cref{lst:stats} z~\Cref{sec:aplikacja}) ---
-          wypisywane na stdout po uruchomieniu \texttt{initial\_population.py}.
-    \item Plik \texttt{initial\_population.json} z~wszystkimi rozwiązaniami
-          --- pozwala policzyć dowolne dodatkowe statystyki ex post
-          (np.\ w~notatniku).
-    \item Wizualizację (\texttt{visualize\_paths.py}) dla wybranych \texttt{id}.
+    \item szybkość poprawy rozwiązania,
+    \item moment znalezienia najlepszego wyniku,
+    \item stabilność działania algorytmu,
+    \item wpływ parametrów na zbieżność.
 \end{itemize}
 
-\subsection{Wyniki wstępne}
+Dla każdego uruchomienia algorytmów ABC oraz Bee można wygenerować wykres:
 
-Pełne wyniki eksperymentalne zostaną dołączone w~kolejnej wersji
-dokumentacji. Bieżąca implementacja przeszła testy poprawności:
+\[
+    best\_value(iteration),
+\]
+
+gdzie \texttt{best\_value} oznacza najlepszą wartość rozwiązania znalezioną
+do danej iteracji. Jeżeli wykres szybko się wypłaszcza, może to oznaczać,
+że dalsze zwiększanie liczby iteracji nie daje istotnej poprawy. Jeżeli
+natomiast poprawy pojawiają się również pod koniec działania algorytmu,
+warto rozważyć zwiększenie liczby iteracji.
+
+\subsection{Test Wilcoxona}
+
+W celu sprawdzenia, czy różnice pomiędzy algorytmami wynikają z rzeczywistej
+poprawy jakości, a nie jedynie z losowości pojedynczych uruchomień, można
+zastosować test rangowanych znaków Wilcoxona.
+
+Test ten jest odpowiedni, ponieważ algorytmy porównywane są parami na tych
+samych instancjach problemu. Dla każdej mapy zapisywany jest wynik dwóch
+porównywanych metod, na przykład ABC oraz Bee Algorithm:
+
+\[
+    (x_1, y_1), (x_2, y_2), \ldots, (x_n, y_n),
+\]
+
+gdzie $x_i$ oznacza wynik pierwszego algorytmu na $i$-tej mapie, a $y_i$
+wynik drugiego algorytmu na tej samej mapie.
+
+Przyjęto następujące hipotezy:
+\[
+    H_0:
+    \text{ mediany różnic pomiędzy wynikami algorytmów są równe,}
+\]
+\[
+    H_1:
+    \text{ mediany różnic pomiędzy wynikami algorytmów różnią się.}
+\]
+
+Dla poziomu istotności:
+\[
+    \alpha = 0.05
+\]
+
+wynik testu interpretowany jest następująco:
 \begin{itemize}
-    \item Wszystkie wygenerowane rozwiązania w~populacji końcowej spełniają
-          wszystkie ograniczenia (\texttt{feasible=true}) --- co jest
-          gwarantowane konstrukcyjnie przez algorytm.
-    \item Walidator \texttt{validate\_population.py} potwierdza brak
-          powtórzeń krawędzi w~każdej trasie.
-    \item Wizualizacja prezentuje sensowne kształty tras (krzywe biegnące
-          przez atrakcje, omijające zablokowane atrakcje niezaplanowane).
+    \item jeżeli $p < 0.05$, różnica pomiędzy algorytmami jest statystycznie istotna,
+    \item jeżeli $p \geq 0.05$, brak podstaw do odrzucenia hipotezy zerowej.
 \end{itemize}
+
+Przykładowe użycie testu w języku Python:
+
+\begin{lstlisting}[language=Python, caption={Przykładowe użycie testu Wilcoxona}]
+from scipy.stats import wilcoxon
+
+abc_results = [360, 340, 380, 355, 370]
+bee_results = [185, 260, 300, 250, 280]
+
+statistic, p_value = wilcoxon(abc_results, bee_results)
+
+print("Statystyka:", statistic)
+print("p-value:", p_value)
+\end{lstlisting}
+
+Zastosowanie testu Wilcoxona pozwala sprawdzić, czy zaobserwowane różnice
+pomiędzy algorytmami są powtarzalne dla wielu instancji problemu.
+
+\subsection{Cele dalszych eksperymentów}
+
+Przeprowadzone eksperymenty mają odpowiedzieć na następujące pytania:
+\begin{enumerate}
+    \item Czy algorytmy rojowe osiągają lepsze wyniki niż baseline'y?
+    \item Czy Bee Algorithm osiąga lepsze wyniki niż ABC?
+    \item Jak parametry algorytmów rojowych wpływają na jakość rozwiązania?
+    \item Po ilu iteracjach zwykle znajdowane jest najlepsze rozwiązanie?
+    \item Czy zwiększanie liczby iteracji rzeczywiście poprawia wynik?
+    \item Ile wywołań funkcji celu potrzeba do znalezienia najlepszego rozwiązania?
+\end{enumerate}
+
+Dzięki zapisywaniu historii iteracji możliwe jest nie tylko porównanie
+końcowych rezultatów, lecz również analiza przebiegu procesu optymalizacji.
+```
