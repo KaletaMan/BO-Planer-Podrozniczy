@@ -1,0 +1,37 @@
+% Porownanie usrednionej zbieznosci ABC vs Bee (pasmo min-max z 5 powtorzen).
+% Dane: grafiki/conv_band.dat (generowane przez: python experiments/run_experiments.py)
+\begin{tikzpicture}
+\begin{axis}[
+    wykres,
+    xlabel={Iteracja},
+    ylabel={Najlepsza wartość rozwiązania},
+    enlarge x limits=false,
+    % legenda pod osia (2 kolumny) - nie zaslania krzywych ani pasm
+    legend columns=2,
+    legend style={
+        at={(0.5,-0.26)}, anchor=north,
+        draw=none, fill=none,
+        /tikz/every even column/.append style={column sep=1.2em},
+    },
+]
+% pasma min-max (rysowane pod liniami srednich)
+\addplot[name path=abcmax, draw=none, forget plot, const plot] table [x=iter, y=abc_max] {grafiki/conv_band.dat};
+\addplot[name path=abcmin, draw=none, forget plot, const plot] table [x=iter, y=abc_min] {grafiki/conv_band.dat};
+\addplot[abcblue!18, forget plot] fill between [of=abcmax and abcmin];
+\addplot[name path=beemax, draw=none, forget plot, const plot] table [x=iter, y=bee_max] {grafiki/conv_band.dat};
+\addplot[name path=beemin, draw=none, forget plot, const plot] table [x=iter, y=bee_min] {grafiki/conv_band.dat};
+\addplot[beeorange!22, forget plot] fill between [of=beemax and beemin];
+% srednie
+\addplot[abcblue, line width=1.3pt, forget plot, const plot] table [x=iter, y=abc_mean] {grafiki/conv_band.dat};
+\addplot[beeorange, line width=1.3pt, forget plot, const plot] table [x=iter, y=bee_mean] {grafiki/conv_band.dat};
+% legenda (kolejnosc niezalezna od kolejnosci rysowania)
+\addlegendimage{abcblue, line width=1.3pt}
+\addlegendentry{ABC (średnia)}
+\addlegendimage{area legend, fill=abcblue!18, draw=none}
+\addlegendentry{ABC (min--max)}
+\addlegendimage{beeorange, line width=1.3pt}
+\addlegendentry{Bee (średnia)}
+\addlegendimage{area legend, fill=beeorange!22, draw=none}
+\addlegendentry{Bee (min--max)}
+\end{axis}
+\end{tikzpicture}

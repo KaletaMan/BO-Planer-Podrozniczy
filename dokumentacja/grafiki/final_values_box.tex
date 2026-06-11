@@ -1,0 +1,26 @@
+% Zmiennosc wartosci koncowych ABC vs Bee (boxplot + surowe punkty).
+% Dane: grafiki/final_values.dat (generowane przez: python experiments/run_experiments.py)
+\begin{tikzpicture}
+\begin{axis}[
+    wykres,
+    width=0.55\textwidth,
+    height=7.2cm,
+    boxplot/draw direction=y,
+    xtick={1,2},
+    xticklabels={ABC, Bee},
+    xmin=0.4, xmax=2.6,
+    ylabel={Końcowa wartość rozwiązania},
+    xmajorgrids=false,
+]
+% mark=none: surowe punkty rysujemy osobno, bez podwojnego znacznika outliera
+\addplot[boxplot={draw position=1, box extend=0.45}, draw=abcblue, fill=abcblue!20, solid, mark=none]
+    table [y=abc] {grafiki/final_values.dat};
+\addplot[boxplot={draw position=2, box extend=0.45}, draw=beeorange, fill=beeorange!20, solid, mark=none]
+    table [y=bee] {grafiki/final_values.dat};
+% surowe wyniki pojedynczych uruchomien
+\addplot[only marks, mark=*, mark size=1.5pt, mark options={fill=black!70, draw=black!70}]
+    table [x expr=1, y=abc] {grafiki/final_values.dat};
+\addplot[only marks, mark=*, mark size=1.5pt, mark options={fill=black!70, draw=black!70}]
+    table [x expr=2, y=bee] {grafiki/final_values.dat};
+\end{axis}
+\end{tikzpicture}

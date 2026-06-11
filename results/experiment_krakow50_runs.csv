@@ -1,0 +1,11 @@
+algo,seed,iterations,population_size,value_collected,movement_time,attraction_cost,visited_count,path_length,feasible,best_iteration,objective_calls_total,objective_calls_to_best
+ABC,1,100,30,1816,711.4,222,24,132,True,75,16947,13458
+ABC,2,100,30,1584,697.0,170,21,115,True,95,16824,15956
+ABC,3,100,30,1691,696.4,244,22,128,True,88,16421,15939
+ABC,4,100,30,1540,715.8,191,21,143,True,72,16430,13343
+ABC,5,100,30,1467,694.4,191,19,116,True,78,16601,13165
+Bee,1,100,30,537,660.2,71,8,120,True,2,4029,58
+Bee,2,100,30,699,659.6,90,9,104,True,33,3998,61
+Bee,3,100,30,669,708.6,137,10,139,True,62,3994,53
+Bee,4,100,30,887,716.2,88,12,141,True,71,4200,64
+Bee,5,100,30,730,625.4,87,9,117,True,27,4190,56

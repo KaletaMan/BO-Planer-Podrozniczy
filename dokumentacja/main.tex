@@ -100,6 +100,41 @@
 
 % ── Grafika, tabele, listy ───────────────────────────────────────────────────
 \usepackage{graphicx}
+\graphicspath{{grafiki/}}
+
+% ── Wykresy pgfplots (natywne, wektorowe) ────────────────────────────────────
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.17}
+\usepgfplotslibrary{statistics,fillbetween}
+
+\definecolor{abcblue}{RGB}{31,119,180}
+\definecolor{beeorange}{RGB}{255,127,14}
+\definecolor{seedA}{RGB}{31,119,180}
+\definecolor{seedB}{RGB}{255,127,14}
+\definecolor{seedC}{RGB}{44,160,44}
+\definecolor{seedD}{RGB}{214,39,40}
+\definecolor{seedE}{RGB}{148,103,189}
+
+% Wspolny styl wykresow eksperymentow
+\pgfplotsset{
+    wykres/.style={
+        width=0.85\textwidth,
+        height=6.8cm,
+        grid=major,
+        grid style={gray!15},
+        axis line style={gray!70},
+        tick style={gray!70},
+        tick label style={font=\footnotesize, /pgf/number format/1000 sep={}},
+        label style={font=\small},
+        legend style={
+            font=\footnotesize,
+            draw=gray!50,
+            fill=white, fill opacity=0.9, text opacity=1,
+        },
+        legend cell align=left,
+        every axis plot/.append style={line width=1pt},
+    },
+}
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage{longtable}
@@ -109,6 +144,21 @@
 % ── Hiperłącza i odnośniki ───────────────────────────────────────────────────
 \usepackage[hidelinks,colorlinks=true,linkcolor=black,citecolor=black,urlcolor=blue!60!black]{hyperref}
 \usepackage{cleveref}
+
+% Polskie nazwy odsyłaczy (cleveref nie ma wbudowanego języka polskiego).
+% Skróty omijają problem odmiany przez przypadki ("w tab. 2", "na rys. 1").
+\crefname{figure}{rys.}{rys.}
+\Crefname{figure}{Rys.}{Rys.}
+\crefname{table}{tab.}{tab.}
+\Crefname{table}{Tab.}{Tab.}
+\crefname{algorithm}{alg.}{alg.}
+\Crefname{algorithm}{Alg.}{Alg.}
+\crefname{section}{rozdz.}{rozdz.}
+\Crefname{section}{Rozdz.}{Rozdz.}
+\crefname{listing}{listing}{listingi}
+\Crefname{listing}{Listing}{Listingi}
+\crefname{equation}{równ.}{równ.}
+\Crefname{equation}{Równ.}{Równ.}
 
 % ── Polskie tłumaczenia środowiska algorithm/algpseudocode ───────────────────
 \floatname{algorithm}{Algorytm}
