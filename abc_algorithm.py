@@ -67,7 +67,7 @@ def check_no_repeated_edges(path):
     return True
 
 
-def _a_star_path(rows, cols, weight, start, goal, blocked_cells, forbidden_edges, min_weight=None):
+def _a_star_path(rows, cols, weight, start, goal, blocked_cells, min_weight=None):
     """Najtańsza ścieżka wg kosztu ruchu (jak w movement_cost) w siatce 8-kierunkowej."""
     if start == goal:
         return [start]
@@ -97,10 +97,6 @@ def _a_star_path(rows, cols, weight, start, goal, blocked_cells, forbidden_edges
             nr, nc = r + dr, c + dc
             nxt = (nr, nc)
             if nxt in blocked_cells:
-                continue
-
-            e = _canon_undirected_edge(cur, nxt)
-            if e in forbidden_edges:
                 continue
 
             direction_cost = 1.4 if (abs(dr) == 1 and abs(dc) == 1) else 1.0
@@ -142,8 +138,6 @@ def build_path_from_waypoints(parsed_data, waypoints, start=None, end=None):
         return None
 
     min_weight = _grid_min_weight(move_time)
-    visited_cells = {start}
-    used_edges = set()
     full_path = [start]
 
     always_allowed = {start, end}
@@ -151,7 +145,7 @@ def build_path_from_waypoints(parsed_data, waypoints, start=None, end=None):
     for a, b in zip(waypoints, waypoints[1:]):
         allowed_attractions = always_allowed | {a, b}
         blocked_attractions = attraction_positions - allowed_attractions
-        blocked_cells = blocked_attractions | (visited_cells - {a, b})
+        blocked_cells = blocked_attractions
 
         segment = _a_star_path(
             rows,
@@ -160,23 +154,12 @@ def build_path_from_waypoints(parsed_data, waypoints, start=None, end=None):
             a,
             b,
             blocked_cells=blocked_cells,
-            forbidden_edges=used_edges,
             min_weight=min_weight,
         )
         if segment is None:
             return None
 
-        for i in range(len(segment) - 1):
-            used_edges.add(_canon_undirected_edge(segment[i], segment[i + 1]))
-
-        for pos in segment[1:]:
-            if pos in visited_cells:
-                return None
-            visited_cells.add(pos)
-            full_path.append(pos)
-
-    if not check_no_repeated_edges(full_path):
-        return None
+        full_path.extend(segment[1:])
     return full_path
 
 
@@ -220,8 +203,6 @@ def _try_build_solution_from_waypoints(parsed_data, waypoints, start, end, evalu
     parsed_data["_objective_calls"] = parsed_data.get("_objective_calls", 0) + 1
     sol = evaluate_path_fn(path, parsed_data)
     if not sol.get("feasible", False):
-        return None
-    if not check_no_repeated_edges(sol["path"]):
         return None
 
     sol["waypoints"] = waypoints
