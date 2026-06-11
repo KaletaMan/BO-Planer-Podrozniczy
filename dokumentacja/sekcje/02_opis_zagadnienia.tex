@@ -33,7 +33,6 @@ Na planszy rozmieszczone są \textbf{atrakcje turystyczne}:
 
 \textbf{Dodatkowe wymagania konstrukcyjne:}
 \begin{itemize}
-    \item każdego przejścia (krawędzi w~siatce) można użyć tylko raz,
     \item każda atrakcja może być odwiedzona maksymalnie raz,
     \item dla każdego typu atrakcji zdefiniowane są limity dolny $l_{\tau}$
           i~górny $u_{\tau}$ na liczbę atrakcji tego typu w~trasie.
@@ -167,13 +166,11 @@ y_i \;\le\; \sum_{j} x_{j i} \quad \forall i \in A .
 \label{eq:link}
 \end{equation}
 
-\textbf{8.\ Jednokrotność użycia krawędzi i odwiedzin atrakcji:}
-\begin{align}
-& x_{ij} + x_{ji} \le 1 \quad \forall (i,j) \in E
-   && \text{(krawędź nieskierowana użyta co najwyżej raz)} \label{eq:edge-unique}\\
-& y_i \le 1 \quad \forall i \in A
-   && \text{(atrakcja odwiedzona co najwyżej raz)} \label{eq:attr-unique}
-\end{align}
+\textbf{8.\ Jednokrotność odwiedzin atrakcji:}
+\begin{equation}
+y_i \le 1 \quad \forall i \in A
+\label{eq:attr-unique}
+\end{equation}
 
 \textbf{9.\ Binarność:}
 \begin{equation}
@@ -183,8 +180,7 @@ x_{ij} \in \{0, 1\}, \quad y_i \in \{0, 1\} .
 
 Równania \eqref{eq:obj}--\eqref{eq:bin} formalnie definiują problem
 optymalizacji jako mieszany model przepływu w~grafie z~elementami doboru
-podzbioru (klasy \emph{Orienteering Problem} z~ograniczeniami typowymi
-i~zakazem powtórzeń krawędzi).
+podzbioru (klasy \emph{Orienteering Problem}).
 
 \subsection{Uwagi modelowe i decyzje projektowe}
 
@@ -200,7 +196,8 @@ i~zakazem powtórzeń krawędzi).
           (najtańsza ścieżka, koszt zgodny z~$c_{ij}$, sąsiedztwo
           8-kierunkowe). Algorytm uwzględnia dynamiczne zakazy: blokowane
           są pola atrakcji niezaplanowanych w~bieżącej liście waypointów,
-          a~także krawędzie wcześniej zużyte (twardy zakaz powtórzeń krawędzi,
+          Algorytm A* nie nakłada ograniczeń na ponowne
+          wykorzystanie tej samej krawędzi.
           \eqref{eq:edge-unique}).
     \item \textbf{Atrakcje są blokujące.} W~implementacji pole atrakcji,
           której nie planujemy odwiedzić, jest blokowane dla ścieżki ---
