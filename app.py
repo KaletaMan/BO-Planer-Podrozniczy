@@ -6,7 +6,9 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from src.map_generator import DEFAULT_TYPES, generate_map
+from src.map_generator import DEFAULT_TYPES, generate_map as generate_basic_map
+from nonlinear_map_generator import generate_map as generate_nonlinear_map
+from updated_map_generator import generate_map as generate_city_map
 from src.path_solver import evaluate_path, solve_greedy_attractions, solve_random_walk
 from src.ui_io import ValidationIssue, list_maps, load_map, save_map, validate_map
 from src.ui_viz import plot_convergence, plot_map, plot_path_on_map, plot_paths_comparison
@@ -22,7 +24,7 @@ RESULTS_DIR = Path(__file__).parent / "results"
 # ── Session state init ────────────────────────────────────────────────────────
 
 def _default_map() -> dict:
-    return generate_map(
+    return generate_basic_map(
         width=10, height=10,
         n_attractions=4, value_min=3, value_max=10,
         cost_min=5, cost_max=30,
@@ -79,14 +81,34 @@ if mode == "Edytor / Generator":
     with col_left:
         st.subheader("Generuj mapę")
 
+        generator_kind = st.selectbox(
+            "Generator mapy",
+            [
+                "Podstawowy",
+                "Nieliniowy",
+                "Miejski / strukturalny",
+            ],
+        )
+
         with st.form("gen_form"):
+            min_size = 5 if generator_kind == "Podstawowy" else 15
+
             c1, c2 = st.columns(2)
-            width  = c1.slider("Szerokość (W)", 5, 30, 10)
-            height = c2.slider("Wysokość (H)",  5, 30, 10)
+            width = c1.slider("Szerokość (W)", min_size, 50, max(min_size, 30))
+            height = c2.slider("Wysokość (H)", min_size, 50, max(min_size, 30))
 
             c3, c4 = st.columns(2)
-            n_attr    = c3.slider("Liczba atrakcji", 1, min(20, width * height // 4 or 1), 4)
-            seed      = c4.number_input("Seed", value=42, step=1)
+            max_attr = max(1, int(width * height) - 2)
+
+            n_attr = c3.number_input(
+                "Liczba atrakcji",
+                min_value=1,
+                max_value=max_attr,
+                value=min(20, max_attr),
+                step=1,
+            )
+
+            seed = c4.number_input("Seed", value=42, step=1)
 
             c5, c6 = st.columns(2)
             val_min = c5.number_input("Wartość min atrakcji", value=3, min_value=1, step=1)
@@ -123,26 +145,46 @@ if mode == "Edytor / Generator":
 
         if gen_btn:
             parsed_types = [t.strip() for t in types_raw.split(",") if t.strip()] or DEFAULT_TYPES
-            st.session_state.map_data = generate_map(
-                width=int(width), height=int(height),
-                n_attractions=int(n_attr),
-                value_min=int(val_min), value_max=int(val_max),
-                cost_min=int(min(cost_min, cost_max)),
-                cost_max=int(max(cost_min, cost_max)),
-                weight_distribution=dist,
-                weight_min=int(w_min), weight_max=int(w_max),
-                start=(int(sx), int(sy)), end=(int(ex), int(ey)),
-                time_limit=int(time_limit),
-                budget=int(budget),
-                seed=int(seed),
-                name=st.session_state.map_data.get("name", "Nowa mapa"),
-                attraction_types=parsed_types,
-            )
+
+            if generator_kind == "Podstawowy":
+                st.session_state.map_data = generate_basic_map(
+                    width=int(width), height=int(height),
+                    n_attractions=int(n_attr),
+                    value_min=int(val_min), value_max=int(val_max),
+                    cost_min=int(min(cost_min, cost_max)),
+                    cost_max=int(max(cost_min, cost_max)),
+                    weight_distribution=dist,
+                    weight_min=int(w_min), weight_max=int(w_max),
+                    start=(int(sx), int(sy)), end=(int(ex), int(ey)),
+                    time_limit=int(time_limit),
+                    budget=int(budget),
+                    seed=int(seed),
+                    name=st.session_state.map_data.get("name", "Nowa mapa"),
+                    attraction_types=parsed_types,
+                )
+
+            elif generator_kind == "Nieliniowy":
+                st.session_state.map_data = generate_nonlinear_map(
+                    rows=int(height),
+                    cols=int(width),
+                    seed=int(seed),
+                    number_of_attractions=int(n_attr),
+                    filename=None,
+                )
+
+            else:
+                st.session_state.map_data = generate_city_map(
+                    rows=int(height),
+                    cols=int(width),
+                    seed=int(seed),
+                    number_of_attractions=int(n_attr),
+                    filename=None,
+                )
+
             st.session_state.last_path = None
             st.session_state.last_eval = None
             st.session_state.dirty = True
             st.rerun()
-
         # ── Manual edits ──────────────────────────────────────────────────────
         st.subheader("Edycja")
         inst = st.session_state.map_data
