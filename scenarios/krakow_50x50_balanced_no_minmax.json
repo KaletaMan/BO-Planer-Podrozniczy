@@ -5207,7 +5207,7 @@
       7
     ]
   ],
-  "time_limit": 720,
+  "time_limit": 500,
   "budget": 250,
   "start": {
     "x": 25,

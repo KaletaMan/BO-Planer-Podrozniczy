@@ -1,6 +1,5 @@
 {
   "map_name": "Krakow pseudo 50x50",
-  "map_data": {
     "name": "Krakow pseudo 50x50",
     "notes": "Pseudo-mapa inspirowana Krakowem: Stare Miasto, Planty, Rynek, os Florianska-Grodzka-Wawel. Wartosci 2-5 to ulice/alejki, 10+ to zabudowa/trudne obszary.",
     "width": 50,
@@ -2607,5 +2606,4 @@
         7
       ]
     ]
-  }
 }

@@ -3532,6 +3532,7 @@
     "x": 46,
     "y": 2
   },
-  "budget": 20,
+  "time_limit": 350,
+  "budget": 150,
   "seed": 7
 }
