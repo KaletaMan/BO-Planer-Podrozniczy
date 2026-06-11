@@ -1,4 +1,3 @@
-```latex
 \section{Eksperymenty}
 \label{sec:eksperymenty}
 
@@ -36,7 +35,8 @@ W eksperymentach można zmieniać następujące parametry:
         \{
         10 \times 10,\,
         20 \times 20,\,
-        30 \times 30
+        30 \times 30,\,
+        50 \times 50
         \};
     \]
     \item liczba atrakcji na mapie;
@@ -71,6 +71,17 @@ Dla każdego uruchomienia mierzono:
     \item liczbę wywołań funkcji celu,
     \item informację, czy rozwiązanie spełnia ograniczenia czasu i budżetu.
 \end{itemize}
+
+\paragraph{Powtarzalność.}
+Eksperyment porównawczy został w pełni zautomatyzowany w skrypcie
+\texttt{experiments/run\_experiments.py}. Skrypt uruchamia oba algorytmy rojowe
+wielokrotnie (dla różnych ziaren \texttt{seed}), zbiera metryki, oblicza
+statystyki opisowe oraz test Wilcoxona, a następnie zapisuje wyniki do katalogu
+\texttt{results/} oraz generuje do katalogu \texttt{dokumentacja/grafiki/} dane
+wykresów (pliki \texttt{.dat} czytane przez pakiet \texttt{pgfplots}) wraz
+z~poglądowymi wykresami \texttt{PNG}.
+Dzięki temu wszystkie liczby przedstawione w tej sekcji można odtworzyć jednym
+poleceniem.
 
 \subsection{Reprezentacja wyników}
 
@@ -111,81 +122,92 @@ Pole \texttt{history} jest szczególnie istotne dla algorytmów rojowych,
 ponieważ pozwala analizować przebieg procesu optymalizacji, a nie tylko
 końcowy wynik.
 
-\subsection{Wyniki przykładowego eksperymentu}
+\subsection{Eksperyment porównawczy ABC vs Bee}
+\label{sec:eksperyment-abc-bee}
 
-W celu wstępnej oceny działania zaimplementowanych algorytmów przeprowadzono
-eksperyment porównawczy na tej samej instancji problemu. Wszystkie algorytmy
-korzystały z identycznej mapy oraz tych samych ograniczeń czasu i budżetu.
+W celu oceny działania zaimplementowanych algorytmów rojowych przeprowadzono
+eksperyment porównawczy na dużej instancji problemu. Oba algorytmy korzystały
+z~identycznej mapy oraz tych samych ograniczeń czasu i~budżetu, a~uruchomienia
+sparowano po ziarnie \texttt{seed}, dzięki czemu wyniki są bezpośrednio
+porównywalne.
 
 Parametry eksperymentu:
 \begin{itemize}
-    \item limit czasu: $50$,
-    \item budżet: $20$,
-    \item wspólna instancja mapy dla wszystkich algorytmów,
-    \item ABC: $500$ iteracji,
-    \item Bee Algorithm: $500$ iteracji.
+    \item instancja: \texttt{Krakow pseudo 50x50 - zbalansowany}
+          (siatka $50 \times 50$, $130$ atrakcji),
+    \item limit czasu: $720$,
+    \item budżet: $250$,
+    \item rozmiar populacji: $30$,
+    \item liczba iteracji: $100$,
+    \item liczba powtórzeń: $5$ (ziarna \texttt{seed} $\in \{1,2,3,4,5\}$),
+    \item ten sam zbiór ziaren dla obu algorytmów (wyniki sparowane).
 \end{itemize}
 
-Uzyskane wyniki przedstawiono w \Cref{tab:example-results}.
+Uśrednione wyniki z~pięciu powtórzeń przedstawiono w~\cref{tab:abc-bee-stats},
+natomiast wartości końcowe poszczególnych uruchomień zestawiono
+w~\cref{tab:abc-bee-paired}.
 
 \begin{table}[H]
 \centering
-\caption{Porównanie wyników algorytmów dla przykładowej instancji.}
-\label{tab:example-results}
+\caption{Statystyki wyników z~5 powtórzeń (instancja $50\times50$, $100$ iteracji).
+Wartości w~formacie $\text{średnia} \pm \text{odch.\ std}$.}
+\label{tab:abc-bee-stats}
 \begin{tabular}{lcccccc}
 \toprule
 Algorytm &
 Wartość &
-Czas &
+Min &
+Max &
 Atrakcje &
-Długość &
-Wywołania celu &
+Wywołania do najl. &
 Feasible \\
 \midrule
-Random Walk &
-0 &
-42.6 &
-0 &
-6 &
-1 &
-$\checkmark$ \\
-Greedy &
-235 &
-49.0 &
-4 &
-10 &
-1 &
-$\checkmark$ \\
 ABC &
-360 &
-47.0 &
-6 &
-16 &
-10213 &
-$\checkmark$ \\
-Bee Algorithm &
-185 &
-46.6 &
-3 &
-15 &
-27657 &
-$\checkmark$ \\
+$1619.6 \pm 122.1$ &
+$1467$ &
+$1816$ &
+$21.4$ &
+$14372$ &
+$5/5$ \\
+Bee &
+$704.4 \pm 112.5$ &
+$537$ &
+$887$ &
+$9.6$ &
+$58$ &
+$5/5$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Na podstawie przeprowadzonego eksperymentu można zauważyć, że najlepszą
-wartość rozwiązania uzyskał algorytm ABC. Osiągnął on wynik $360$ punktów,
-odwiedzając $6$ atrakcji i zachowując ograniczenia problemu. Algorytm zachłanny
-uzyskał wynik $235$, natomiast metoda losowa nie odwiedziła żadnej atrakcji.
-Wynik ten pokazuje, że proste losowe generowanie trasy jest niewystarczające
-dla rozważanego problemu.
+\begin{table}[H]
+\centering
+\caption{Końcowa wartość rozwiązania w~kolejnych powtórzeniach (sparowane po \texttt{seed}).}
+\label{tab:abc-bee-paired}
+\begin{tabular}{lccccc}
+\toprule
+\texttt{seed} & $1$ & $2$ & $3$ & $4$ & $5$ \\
+\midrule
+ABC & $1816$ & $1584$ & $1691$ & $1540$ & $1467$ \\
+Bee & $537$  & $699$  & $669$  & $887$  & $730$  \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-Bee Algorithm w tym uruchomieniu uzyskał niższą wartość niż ABC, mimo wykonania
-większej liczby ocen funkcji celu w trakcie działania algorytmu. Należy jednak
-podkreślić, że przedstawione wyniki mają charakter wstępny i dotyczą pojedynczej
-instancji problemu. Do wyciągania ogólnych wniosków konieczne jest wykonanie
-większej liczby powtórzeń.
+Na podstawie przeprowadzonego eksperymentu można zauważyć, że algorytm ABC
+uzyskał istotnie lepsze wyniki niż Bee Algorithm na tej instancji. Średnia
+wartość rozwiązania ABC wyniosła $1619.6$, podczas gdy Bee Algorithm osiągnął
+średnio $704.4$ --- ABC był lepszy w~\emph{każdym} z~pięciu powtórzeń. Algorytm
+ABC odwiedzał także więcej atrakcji (średnio $21.4$ wobec $9.6$) i~pełniej
+wykorzystywał dostępny budżet, przy zachowaniu ograniczeń problemu (wszystkie
+$10$ uruchomień było dopuszczalnych).
+
+Warto jednak zwrócić uwagę na koszt obliczeniowy: ABC potrzebował średnio
+$14372$ wywołań funkcji celu do znalezienia najlepszego rozwiązania, podczas
+gdy Bee Algorithm zatrzymywał się na znacznie niższym wyniku już po średnio
+$58$ wywołaniach do swojego (gorszego) optimum. Bee Algorithm szybciej
+\emph{przestaje} się poprawiać, co przy stałym budżecie iteracji prowadzi do
+niższej jakości końcowej.
 
 \subsection{Analiza zbieżności}
 
@@ -198,34 +220,72 @@ w kolejnych iteracjach. Pozwala to analizować:
     \item wpływ parametrów na zbieżność.
 \end{itemize}
 
-Dla każdego uruchomienia algorytmów ABC oraz Bee można wygenerować wykres:
-
+Dla każdego uruchomienia algorytmów ABC oraz Bee generowany jest wykres:
 \[
     best\_value(iteration),
 \]
-
 gdzie \texttt{best\_value} oznacza najlepszą wartość rozwiązania znalezioną
-do danej iteracji. Jeżeli wykres szybko się wypłaszcza, może to oznaczać,
-że dalsze zwiększanie liczby iteracji nie daje istotnej poprawy. Jeżeli
-natomiast poprawy pojawiają się również pod koniec działania algorytmu,
-warto rozważyć zwiększenie liczby iteracji.
+do danej iteracji.
+
+\Cref{fig:conv-abc} oraz \cref{fig:conv-bee} przedstawiają przebiegi zbieżności
+dla pięciu powtórzeń każdego algorytmu, a~\cref{fig:conv-compare} zestawia
+uśrednione krzywe obu metod (z~zaznaczonym pasmem min--max).
+
+\begin{figure}[H]
+\centering
+\input{grafiki/conv_abc.tex}
+\caption{Zbieżność algorytmu ABC --- 5 powtórzeń (instancja $50\times50$, $100$ iteracji).}
+\label{fig:conv-abc}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\input{grafiki/conv_bee.tex}
+\caption{Zbieżność algorytmu Bee --- 5 powtórzeń (instancja $50\times50$, $100$ iteracji).}
+\label{fig:conv-bee}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\input{grafiki/conv_compare.tex}
+\caption{Porównanie uśrednionej zbieżności ABC oraz Bee (pasmo min--max z~5 powtórzeń).}
+\label{fig:conv-compare}
+\end{figure}
+
+Krzywe ABC rosną niemal do końca przebiegu --- najlepsze rozwiązania znajdowane
+są średnio dopiero w~okolicy iteracji $82$ (zob.\ \cref{tab:abc-bee-stats}) ---
+i~dopiero powyżej $80$~iteracji zaczynają się wypłaszczać. Sugeruje to, że dla
+tej instancji liczba $100$ iteracji jest bliska wystarczającej, choć dalsze
+zwiększanie mogłoby przynieść jeszcze niewielką poprawę. Krzywe Bee Algorithm
+wypłaszczają się znacznie wcześniej i~na dużo niższym poziomie, co potwierdza
+jego skłonność do przedwczesnej stagnacji na tej instancji.
+
+\Cref{fig:final-box} ilustruje zmienność wartości końcowych pomiędzy
+powtórzeniami. Rozrzut wyników ABC i~Bee jest zbliżony co do odchylenia
+standardowego (ok.\ $112$--$122$), jednak rozkłady nie zachodzą na siebie ---
+nawet najsłabsze uruchomienie ABC ($1467$) jest wyraźnie lepsze od najlepszego
+uruchomienia Bee ($887$).
+
+\begin{figure}[H]
+\centering
+\input{grafiki/final_values_box.tex}
+\caption{Zmienność wartości końcowych ABC vs Bee dla 5 powtórzeń.}
+\label{fig:final-box}
+\end{figure}
 
 \subsection{Test Wilcoxona}
 
 W celu sprawdzenia, czy różnice pomiędzy algorytmami wynikają z rzeczywistej
-poprawy jakości, a nie jedynie z losowości pojedynczych uruchomień, można
-zastosować test rangowanych znaków Wilcoxona.
+poprawy jakości, a nie jedynie z losowości pojedynczych uruchomień, zastosowano
+test rangowanych znaków Wilcoxona.
 
 Test ten jest odpowiedni, ponieważ algorytmy porównywane są parami na tych
-samych instancjach problemu. Dla każdej mapy zapisywany jest wynik dwóch
-porównywanych metod, na przykład ABC oraz Bee Algorithm:
-
+samych instancjach problemu. Dla każdego ziarna \texttt{seed} zapisano wynik
+dwóch porównywanych metod, ABC oraz Bee Algorithm (zob.\ \cref{tab:abc-bee-paired}):
 \[
     (x_1, y_1), (x_2, y_2), \ldots, (x_n, y_n),
 \]
-
-gdzie $x_i$ oznacza wynik pierwszego algorytmu na $i$-tej mapie, a $y_i$
-wynik drugiego algorytmu na tej samej mapie.
+gdzie $x_i$ oznacza wynik ABC dla $i$-tego ziarna, a $y_i$ wynik Bee Algorithm.
 
 Przyjęto następujące hipotezy:
 \[
@@ -237,33 +297,35 @@ Przyjęto następujące hipotezy:
     \text{ mediany różnic pomiędzy wynikami algorytmów różnią się.}
 \]
 
-Dla poziomu istotności:
-\[
-    \alpha = 0.05
-\]
-
-wynik testu interpretowany jest następująco:
+Dla poziomu istotności $\alpha = 0.05$ wynik testu interpretowany jest następująco:
 \begin{itemize}
     \item jeżeli $p < 0.05$, różnica pomiędzy algorytmami jest statystycznie istotna,
     \item jeżeli $p \geq 0.05$, brak podstaw do odrzucenia hipotezy zerowej.
 \end{itemize}
 
-Przykładowe użycie testu w języku Python:
+Test przeprowadzono na danych z~\cref{tab:abc-bee-paired}:
 
-\begin{lstlisting}[language=Python, caption={Przykładowe użycie testu Wilcoxona}]
+\begin{lstlisting}[language=Python, caption={Test Wilcoxona na zebranych wynikach}]
 from scipy.stats import wilcoxon
 
-abc_results = [360, 340, 380, 355, 370]
-bee_results = [185, 260, 300, 250, 280]
+abc_results = [1816, 1584, 1691, 1540, 1467]
+bee_results = [537, 699, 669, 887, 730]
 
 statistic, p_value = wilcoxon(abc_results, bee_results)
 
-print("Statystyka:", statistic)
-print("p-value:", p_value)
+print("Statystyka:", statistic)  # 0.0
+print("p-value:", p_value)        # 0.0625
 \end{lstlisting}
 
-Zastosowanie testu Wilcoxona pozwala sprawdzić, czy zaobserwowane różnice
-pomiędzy algorytmami są powtarzalne dla wielu instancji problemu.
+Uzyskano statystykę $W = 0$ oraz $p = 0.0625$. Mimo że ABC okazał się lepszy
+we wszystkich pięciu powtórzeniach, formalnie $p \geq 0.05$, więc na poziomie
+istotności $\alpha = 0.05$ nie ma podstaw do odrzucenia hipotezy zerowej. Wynika
+to z~bardzo małej próby: dla $n = 5$ par minimalna możliwa wartość $p$ w~teście
+dwustronnym wynosi właśnie $0.0625$. Aby uzyskać wynik istotny statystycznie,
+należałoby zwiększyć liczbę powtórzeń lub --- co metodologicznie bardziej
+poprawne --- przeprowadzić porównanie na większej liczbie różnych instancji
+problemu (np.\ $n \geq 6$). Kierunek różnicy jest jednak jednoznaczny i~zgodny
+z~analizą zbieżności.
 
 \subsection{Cele dalszych eksperymentów}
 
@@ -277,6 +339,9 @@ Przeprowadzone eksperymenty mają odpowiedzieć na następujące pytania:
     \item Ile wywołań funkcji celu potrzeba do znalezienia najlepszego rozwiązania?
 \end{enumerate}
 
-Dzięki zapisywaniu historii iteracji możliwe jest nie tylko porównanie
-końcowych rezultatów, lecz również analiza przebiegu procesu optymalizacji.
-```
+Przeprowadzony eksperyment porównawczy daje wstępne odpowiedzi na pytania~2,
+4 oraz~6: na badanej instancji ABC wyraźnie przewyższa Bee Algorithm, najlepsze
+rozwiązanie ABC znajdowane jest średnio w~okolicy iteracji $82$, a~do jego
+osiągnięcia potrzeba rzędu $14$~tysięcy wywołań funkcji celu. Dzięki zapisywaniu
+historii iteracji możliwe jest nie tylko porównanie końcowych rezultatów, lecz
+również analiza przebiegu procesu optymalizacji.

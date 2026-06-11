@@ -24,7 +24,7 @@ formie wyróżnia trzy typy ,,pszczół'':
           wielu prób (\emph{trial}) nie poprawiły się, nowymi losowymi rozwiązaniami.
 \end{itemize}
 
-Schemat iteracji ABC dla naszego problemu przedstawia~\Cref{alg:abc-overview}.
+Schemat iteracji ABC dla naszego problemu przedstawia~\cref{alg:abc-overview}.
 
 \begin{algorithm}[H]
 \caption{Generowanie populacji metodą ABC (ogólny zarys)}
@@ -112,10 +112,10 @@ Procedura konstrukcji pojedynczego rozwiązania składa się z~dwóch kroków:
 
 \begin{enumerate}
     \item Losowy wybór listy waypointów spełniający ograniczenia liczności
-          typów (\Cref{alg:random-waypoints}).
+          typów (\cref{alg:random-waypoints}).
     \item Materializacja ścieżki przez łączenie kolejnych waypointów
           algorytmem A\textsuperscript{*} z~zakazem powtarzania krawędzi
-          i~komórek (\Cref{alg:build-path}). Jeżeli ścieżka się nie udaje
+          i~komórek (\cref{alg:build-path}). Jeżeli ścieżka się nie udaje
           (np.\ nie ma fizycznej drogi spełniającej ograniczenia),
           rozwiązanie jest odrzucane i~próbujemy następne.
 \end{enumerate}
@@ -186,7 +186,7 @@ zadanych blokadach komórek i~zakazach krawędzi).
 Modyfikacja rozwiązania (\textsc{MutacjaWaypointow}) polega na zmianie
 listy waypointów, a~następnie próbie materializacji nowej ścieżki.
 Wybór operatora jest losowy z~rozkładem przedstawionym
-w~\Cref{tab:operators}. W~każdej próbie sprawdzane są ograniczenia
+w~\cref{tab:operators}. W~każdej próbie sprawdzane są ograniczenia
 liczności typów; jeżeli kandydat nie da się zmaterializować lub nie spełnia
 ograniczeń, próba kończy się fiaskiem.
 
@@ -224,7 +224,7 @@ następująca:
 
 \begin{enumerate}
     \item Posortuj populację malejąco wg krotki porządkowej (patrz
-          \Cref{sec:abc}).
+          \cref{sec:abc}).
     \item Rozwiązaniu o~randze $r$ (od~0) przypisz wagę $w_r = N - r$.
     \item Losuj indeks źródła z~rozkładem proporcjonalnym do $w_r$.
 \end{enumerate}
@@ -237,7 +237,7 @@ $O = N$).
 
 Jeśli licznik nieudanych prób ($\mathrm{trial}$) dla rozwiązania przekroczy
 limit $L$, rozwiązanie jest zastępowane nowym losowym rozwiązaniem
-dopuszczalnym (\Cref{alg:random-waypoints} + \Cref{alg:build-path}). Po
+dopuszczalnym (\cref{alg:random-waypoints} + \cref{alg:build-path}). Po
 udanym zastąpieniu licznik prób się zeruje. Jeżeli nie udaje się
 wygenerować nowego rozwiązania w~zadanej liczbie prób, licznik również się
 zeruje, by nie zapętlać próby zastąpienia.
@@ -322,7 +322,7 @@ Intuicyjnie odpowiada to następującym rolom:
           słabych / zastanych rozwiązań nowymi losowymi rozwiązaniami dopuszczalnymi.
 \end{itemize}
 
-Schemat iteracji BA dla naszego problemu przedstawia~\Cref{alg:bee-overview}.
+Schemat iteracji BA dla naszego problemu przedstawia~\cref{alg:bee-overview}.
 
 \begin{algorithm}[H]
 \caption{Generowanie populacji metodą BA (ogólny zarys)}
@@ -330,7 +330,7 @@ Schemat iteracji BA dla naszego problemu przedstawia~\Cref{alg:bee-overview}.
 \begin{algorithmic}[1]
 \Require dane wejściowe \texttt{parsed\_data}, rozmiar populacji $N$, liczba iteracji $I$, prawdopodobieństwo rekrutacji $p_r$, udział zwiadowców $r_s$, próg jakości tańca $Q$ (\%), cierpliwość porzucenia $A$
 \Ensure populacja $\mathcal{P} = \{s_1, \dots, s_N\}$ rozwiązań dopuszczalnych
-\State $\mathcal{P} \gets$ $N$ losowych rozwiązań dopuszczalnych (por.\ \Cref{sec:init-pop})
+\State $\mathcal{P} \gets$ $N$ losowych rozwiązań dopuszczalnych (por.\ \cref{sec:init-pop})
 \State $s^\star \gets \bot$
 \For{$it = 1, \dots, I$}
     \State $b \gets \max\limits_{s \in \mathcal{P}} s$ \Comment{najlepsze wg relacji $\succ$}
@@ -342,7 +342,7 @@ Schemat iteracji BA dla naszego problemu przedstawia~\Cref{alg:bee-overview}.
     \State $F \gets \max(1, \lfloor N \cdot p_r \rfloor)$ \Comment{liczba zbieraczek}
     \For{$k = 1, \dots, F$}
         \State $i \gets$ \Call{WylosujZWagami}{$E, w$}
-        \State $s' \gets$ \Call{MutacjaWaypointow}{$\mathcal{P}_i$} \Comment{por.\ \Cref{sec:operators}}
+        \State $s' \gets$ \Call{MutacjaWaypointow}{$\mathcal{P}_i$} \Comment{por.\ \cref{sec:operators}}
         \If{$s' \ne \bot$ \textbf{i} $s' \succ \mathcal{P}_i$}
             \State $\mathcal{P}_i \gets s'$;\ \ $\mathcal{P}_i.\text{trial} \gets 0$
         \Else
@@ -367,24 +367,24 @@ Schemat iteracji BA dla naszego problemu przedstawia~\Cref{alg:bee-overview}.
 \end{algorithm}
 
 Relacja porządku $s' \succ s$ jest taka sama jak w~ABC (leksykograficzne
-porównanie krotek jakości; por.\ \Cref{sec:abc}).
+porównanie krotek jakości; por.\ \cref{sec:abc}).
 
 \subsubsection{Reprezentacja rozwiązania}
 
 Reprezentacja (waypointy + materializacja ścieżki) jest identyczna jak w~ABC
-(\Cref{sec:repr}).
+(\cref{sec:repr}).
 
 \subsubsection{Wygenerowanie populacji początkowej}
 
 Inicjalizacja populacji polega na~wygenerowaniu $N$ losowych rozwiązań
 \textbf{dopuszczalnych} przez losowanie waypointów i~materializację ścieżki
-(\Cref{sec:init-pop}, \Cref{alg:random-waypoints}, \Cref{alg:build-path}).
+(\cref{sec:init-pop}, \cref{alg:random-waypoints}, \cref{alg:build-path}).
 
 \subsubsection{Operatory modyfikacji (sąsiedztwo)}
 
 Lokalne przeszukiwanie wykonywane przez zbieraczki wykorzystuje ten sam operator
-\textsc{MutacjaWaypointow} co ABC (\Cref{sec:operators}, \Cref{tab:operators},
-\Cref{alg:mutate}).
+\textsc{MutacjaWaypointow} co ABC (\cref{sec:operators}, \cref{tab:operators},
+\cref{alg:mutate}).
 
 \subsubsection{Rekrutacja (taniec) i dobór obszarów eksploatacji}
 

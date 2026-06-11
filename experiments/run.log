@@ -1,0 +1,40 @@
+Mapa: Krakow pseudo 50x50 - zbalansowany (50x50), atrakcje=130, time_limit=720, budget=250
+Schemat: 5 powtorzen x 100 iteracji, populacja=30, seedy=[1, 2, 3, 4, 5]
+
+[ABC seed=1] start ...
+[ABC seed=1] done: value=1816, atrakcje=24, czas=711.4, koszt=222, feasible=True, best_iter=75, calls_to_best=13458
+[ABC seed=2] start ...
+[ABC seed=2] done: value=1584, atrakcje=21, czas=697.0, koszt=170, feasible=True, best_iter=95, calls_to_best=15956
+[ABC seed=3] start ...
+[ABC seed=3] done: value=1691, atrakcje=22, czas=696.4, koszt=244, feasible=True, best_iter=88, calls_to_best=15939
+[ABC seed=4] start ...
+[ABC seed=4] done: value=1540, atrakcje=21, czas=715.8, koszt=191, feasible=True, best_iter=72, calls_to_best=13343
+[ABC seed=5] start ...
+[ABC seed=5] done: value=1467, atrakcje=19, czas=694.4, koszt=191, feasible=True, best_iter=78, calls_to_best=13165
+[Bee seed=1] start ...
+[Bee seed=1] done: value=537, atrakcje=8, czas=660.2, koszt=71, feasible=True, best_iter=2, calls_to_best=58
+[Bee seed=2] start ...
+[Bee seed=2] done: value=699, atrakcje=9, czas=659.6, koszt=90, feasible=True, best_iter=33, calls_to_best=61
+[Bee seed=3] start ...
+[Bee seed=3] done: value=669, atrakcje=10, czas=708.6, koszt=137, feasible=True, best_iter=62, calls_to_best=53
+[Bee seed=4] start ...
+[Bee seed=4] done: value=887, atrakcje=12, czas=716.2, koszt=88, feasible=True, best_iter=71, calls_to_best=64
+[Bee seed=5] start ...
+[Bee seed=5] done: value=730, atrakcje=9, czas=625.4, koszt=87, feasible=True, best_iter=27, calls_to_best=56
+D:\AGH\BO-Planer-Podrozniczy\experiments\run_experiments.py:249: MatplotlibDeprecationWarning: The 'labels' parameter of boxplot() has been renamed 'tick_labels' since Matplotlib 3.9; support for the old name will be dropped in 3.11.
+  bp = ax.boxplot([abc_vals, bee_vals], labels=["ABC", "Bee"], patch_artist=True, showmeans=True)
+
+=== STATYSTYKI (value_collected) ===
+ABC: mean=1619.6 std=122.1 min=1467 max=1816 median=1584.0
+Bee: mean=704.4 std=112.5 min=537 max=887 median=699.0
+
+Wilcoxon ABC vs Bee: statistic=0.0, p-value=0.0625
+
+Zapisano:
+  - D:\AGH\BO-Planer-Podrozniczy\results\experiment_krakow50_abc_bee.json
+  - D:\AGH\BO-Planer-Podrozniczy\results\experiment_krakow50_summary.json
+  - D:\AGH\BO-Planer-Podrozniczy\results\experiment_krakow50_runs.csv
+  - D:\AGH\BO-Planer-Podrozniczy\dokumentacja\grafiki\conv_abc.png
+  - D:\AGH\BO-Planer-Podrozniczy\dokumentacja\grafiki\conv_bee.png
+  - D:\AGH\BO-Planer-Podrozniczy\dokumentacja\grafiki\conv_compare.png
+  - D:\AGH\BO-Planer-Podrozniczy\dokumentacja\grafiki\final_values_box.png

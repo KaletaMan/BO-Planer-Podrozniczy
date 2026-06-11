@@ -1,0 +1,30 @@
+% Zbieznosc ABC (5 powtorzen). Dane: grafiki/conv_abc.dat
+% (generowane przez: python experiments/run_experiments.py)
+\begin{tikzpicture}
+\begin{axis}[
+    wykres,
+    xlabel={Iteracja},
+    ylabel={Najlepsza wartość rozwiązania},
+    enlarge x limits=false,
+    % legenda poziomo pod osia - nie zaslania krzywych
+    legend columns=-1,
+    legend style={
+        at={(0.5,-0.26)}, anchor=north,
+        draw=none, fill=none,
+        /tikz/every even column/.append style={column sep=0.9em},
+    },
+]
+\addplot[seedA, const plot] table [x=iter, y=s1] {grafiki/conv_abc.dat};
+\addplot[seedB, const plot] table [x=iter, y=s2] {grafiki/conv_abc.dat};
+\addplot[seedC, const plot] table [x=iter, y=s3] {grafiki/conv_abc.dat};
+\addplot[seedD, const plot] table [x=iter, y=s4] {grafiki/conv_abc.dat};
+\addplot[seedE, const plot] table [x=iter, y=s5] {grafiki/conv_abc.dat};
+\legend{
+    \texttt{seed=1},
+    \texttt{seed=2},
+    \texttt{seed=3},
+    \texttt{seed=4},
+    \texttt{seed=5},
+}
+\end{axis}
+\end{tikzpicture}
